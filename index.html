@@ -3,84 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>比价程序 - 云同步版 v2.9.4</title>
+    <title>比价程序 - 云同步版 v2.9.5</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pinyin-pro"></script>
     
     <style>
-        :root { --bg: #F5EFE6; --nav: #241408; --accent: #7A4F2D; --text: #2E1A0A; --sub: #907060; --border: #E2D0BC; --white: #FFFCF8; --star: #F5A623; }
+        :root { --bg: #F7F4F0; --nav: #2A1F18; --accent: #885A3A; --text: #2E1A0A; --sub: #907060; --border: #E8DFD5; --white: #FFFFFF; --star: #F5A623; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
         header { background: var(--nav); padding: 30px 20px 10px; color: white; flex-shrink: 0; display: flex; justify-content: space-between; align-items: flex-end; }
-        .nav-title { font-size: 20px; font-weight: bold; margin: 0; }
+        .nav-title { font-size: 20px; font-weight: bold; margin: 0; letter-spacing: 1px; }
         .status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #ccc; margin-right: 4px; }
         .status-dot.online { background: #4caf50; }
         .status-text { font-size: 11px; color: #aaa; }
 
-        .filter-bar { display: flex; gap: 8px; padding: 8px 15px 8px 30px; background: var(--white); border-bottom: 1px solid var(--border); overflow-x: auto; white-space: nowrap; -ms-overflow-style: none; scrollbar-width: none; flex-shrink: 0; }
+        .filter-bar { display: flex; gap: 8px; padding: 10px 15px 10px 35px; background: var(--white); border-bottom: 1px solid var(--border); overflow-x: auto; white-space: nowrap; -ms-overflow-style: none; scrollbar-width: none; flex-shrink: 0; }
         .filter-bar::-webkit-scrollbar { display: none; }
-        .filter-tag { padding: 4px 12px; border-radius: 15px; font-size: 12px; color: var(--sub); border: 1px solid var(--border); cursor: pointer; transition: 0.2s; user-select: none; }
+        .filter-tag { padding: 5px 14px; border-radius: 20px; font-size: 13px; color: var(--sub); border: 1px solid var(--border); cursor: pointer; transition: 0.2s; user-select: none; }
         .filter-tag.active { background: var(--accent); color: white; border-color: var(--accent); font-weight: bold; }
 
-        .search-bar { padding: 6px 15px 6px 30px; background: var(--bg); flex-shrink: 0; }
-        .search-bar input { width: 100%; border-radius: 15px; padding: 6px 15px; border: 1px solid var(--border); background: var(--white); outline: none; font-size: 12px; }
+        .search-bar { padding: 8px 15px 8px 35px; background: var(--bg); flex-shrink: 0; }
+        .search-bar input { width: 100%; border-radius: 15px; padding: 8px 15px; border: 1px solid #DFD5C9; background: var(--white); outline: none; font-size: 13px; color: var(--text); }
+        .search-bar input::placeholder { color: #BDB1A6; }
 
-        main { flex: 1; overflow-y: auto; padding: 8px 12px 15px 30px; position: relative; } 
+        main { flex: 1; overflow-y: auto; padding: 8px 12px 20px 35px; position: relative; } 
         
         .alpha-sidebar {
             position: fixed; left: 0; top: 50%; transform: translateY(-50%);
             display: flex; flex-direction: column; font-size: 10px; text-align: center;
-            z-index: 50; width: 24px; font-weight: bold; background: rgba(245, 239, 230, 0.85);
-            padding: 10px 0; border-radius: 0 10px 10px 0;
+            z-index: 50; width: 26px; font-weight: bold; background: rgba(247, 244, 240, 0.9);
+            padding: 12px 0; border-radius: 0 12px 12px 0; box-shadow: 2px 0 8px rgba(0,0,0,0.03);
         }
-        .alpha-sidebar span { padding: 3px 0; color: #907060; cursor: pointer; user-select: none; }
-        .alpha-sidebar span:active { color: var(--accent); transform: scale(1.2); }
+        .alpha-sidebar span { padding: 4px 0; color: #A68A76; cursor: pointer; user-select: none; }
+        .alpha-sidebar span:active { color: var(--accent); transform: scale(1.3); }
 
-        .group-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        /* --- 视觉重构核心区 --- */
+        .group-card { background: var(--white); border-radius: 12px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 14px rgba(136, 90, 58, 0.06); border: 1px solid #F0EAE1; }
         
-        .group-header { padding: 14px 15px; background: #faf4ed; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .group-title { font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 6px; color: var(--text); }
-        .cat-tag { font-size: 10px; background: #e8e0d5; color: var(--accent); padding: 1px 4px; border-radius: 3px; font-weight: normal; }
-        .group-stats { font-size: 11px; color: var(--sub); display: flex; gap: 6px; align-items: center; }
-        .stats-highlight { color: #C06840; font-weight: bold; }
-        .arrow { font-size: 10px; color: #999; transition: transform 0.3s; margin-left: 4px; }
+        .group-header { padding: 16px; background: var(--white); border-bottom: 1px solid #F5EFE6; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        /* 放大一级分类字号、加粗 */
+        .group-title { font-weight: 800; font-size: 18px; display: flex; align-items: center; gap: 6px; color: #1E120A; letter-spacing: 0.5px; }
+        .cat-tag { font-size: 10px; background: #F2EBE4; color: #7A5C46; padding: 2px 5px; border-radius: 4px; font-weight: normal; letter-spacing: 0; }
+        /* 将统计数据做成胶囊样式，弱化视觉占用 */
+        .group-stats { font-size: 11px; color: #9A8676; background: #F9F7F4; padding: 4px 10px; border-radius: 20px; border: 1px solid #EFEAE3; display: flex; gap: 6px; align-items: center; }
+        .stats-highlight { color: #D15A2B; font-weight: bold; }
+        .arrow { font-size: 10px; color: #C4B5A5; transition: transform 0.3s; margin-left: 2px; }
         .arrow.collapsed { transform: rotate(-90deg); }
 
         .item-list { transition: all 0.3s ease-in-out; }
         .item-list.hidden { display: none; }
         
-        /* 完美的双行排版 */
-        .item-row { padding: 10px 12px; border-bottom: 1px dashed #eee; display: flex; flex-direction: column; gap: 6px; }
+        /* 紧凑双行排版 */
+        .item-row { padding: 12px 16px; border-bottom: 1px solid #F7F4F0; display: flex; flex-direction: column; gap: 6px; }
         .item-row:last-child { border-bottom: none; }
-        .item-row.is-starred { background: #fffcf2; } 
+        .item-row.is-starred { background: #FFFCF5; } 
         
         .row-line { display: flex; justify-content: space-between; align-items: center; width: 100%; }
         
-        .channel-name { font-weight: bold; font-size: 14px; display: flex; align-items: center; gap: 4px; color: #33261D; }
-        .star-icon { color: #ccc; font-size: 16px; cursor: pointer; user-select: none; margin-right: 2px; }
+        /* 弱化二级类目字体粗细，采用普通加粗 */
+        .channel-name { font-weight: 500; font-size: 14px; display: flex; align-items: center; gap: 4px; color: #4A3A2C; flex-shrink: 0; }
+        .star-icon { color: #DED3C6; font-size: 15px; cursor: pointer; user-select: none; margin-right: 2px; }
         .star-icon.active { color: var(--star); }
-        .unit-price { font-size: 15px; font-weight: bold; color: var(--accent); flex-shrink: 0; }
+        .item-details { flex: 1; min-width: 0; font-size: 12px; color: #8A7A6D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 10px; }
+        /* 价格保持显眼 */
+        .unit-price { font-size: 16px; font-weight: bold; color: #C85A2D; flex-shrink: 0; }
         
-        .sub-text { font-size: 12px; color: #6E5C4F; } /* 品牌型号规格的颜色加深一点 */
-        .total-info { font-size: 11px; color: #B0A398; margin-left: 6px; flex-shrink: 0; } /* 次要信息颜色调浅 */
-        .remark-text { font-size: 10px; color: #a88a78; background: #fdfaf7; padding: 2px 4px; border-radius: 3px; display: inline-block; border: 1px solid #f0e6da; margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sub-text { font-size: 12px; color: #A49385; flex-shrink: 0; }
+        .remark-text { font-size: 10px; color: #B09886; background: #FAF7F2; padding: 2px 6px; border-radius: 4px; border: 1px solid #EFEAE3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; margin-left: 8px; }
         
-        /* 保证左侧文字过长时自动打点，不把右侧按钮挤出屏幕 */
         .details-container { flex: 1; min-width: 0; display: flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .edit-btn { color: #6E8572; font-size: 11px; padding: 3px 10px; background: transparent; border: 1px solid #C5D1C7; border-radius: 4px; cursor: pointer; flex-shrink: 0; margin-left: 10px; }
+        /* 弱化编辑按钮 */
+        .edit-btn { color: #8C998D; font-size: 11px; padding: 3px 12px; background: transparent; border: 1px solid #D1D9D2; border-radius: 12px; cursor: pointer; flex-shrink: 0; margin-left: 10px; transition: 0.2s; }
+        .edit-btn:active { background: #F0F4F1; }
 
+        /* --- 弹窗样式 --- */
         footer { padding: 10px 15px 20px; background: var(--bg); border-top: 1px solid var(--border); flex-shrink: 0; }
-        .add-btn { background: var(--accent); color: white; width: 100%; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; border: none; cursor: pointer;}
+        .add-btn { background: var(--accent); color: white; width: 100%; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; border: none; cursor: pointer; box-shadow: 0 4px 10px rgba(136, 90, 58, 0.2); }
         
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
         .modal.active { display: flex; }
-        .form-card { background: var(--white); width: 92%; max-width: 400px; padding: 20px; border-radius: 12px; max-height: 90vh; overflow-y: auto;}
-        input, select { width: 100%; background: var(--bg); border: 1px solid var(--border); padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 14px; outline: none; }
-        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
-        .btn-group button { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; font-size: 14px; cursor: pointer; }
-        .btn-del-record { background: #fff1f0; color: #d9363e; margin-top: 15px; width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #ffccc7; font-weight: bold; display: none; cursor: pointer;}
+        .form-card { background: var(--white); width: 92%; max-width: 400px; padding: 25px; border-radius: 16px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        input, select { width: 100%; background: #F9F7F4; border: 1px solid #E8DFD5; padding: 12px; border-radius: 8px; margin-bottom: 10px; font-size: 14px; outline: none; transition: 0.2s; color: var(--text); }
+        input:focus { border-color: var(--accent); background: var(--white); }
+        .btn-group { display: flex; gap: 12px; margin-top: 15px; }
+        .btn-group button { flex: 1; padding: 14px; border-radius: 8px; border: none; font-weight: bold; font-size: 15px; cursor: pointer; }
+        .btn-del-record { background: #FFF4F3; color: #E04D4A; margin-top: 20px; width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #FCDAD9; font-weight: bold; display: none; cursor: pointer;}
     </style>
 </head>
 <body>
@@ -95,7 +104,7 @@
 
 <div class="filter-bar" id="filterBar"></div>
 <div class="search-bar">
-    <input type="text" id="searchInput" placeholder="🔍 搜索 (支持拼音首字母)" oninput="applyFilterAndRender()">
+    <input type="text" id="searchInput" placeholder="🔍 搜索品类、品牌或渠道..." oninput="applyFilterAndRender()">
 </div>
 <div class="alpha-sidebar" id="alphaSidebar"></div>
 <main id="recordList"></main>
@@ -106,32 +115,32 @@
 
 <div class="modal" id="formModal">
     <div class="form-card">
-        <div id="modalTitle" style="font-weight:bold; margin-bottom:15px; font-size:16px; border-left:4px solid var(--accent); padding-left:8px;">新增购买</div>
+        <div id="modalTitle" style="font-weight:800; margin-bottom:18px; font-size:18px; border-left:4px solid var(--accent); padding-left:10px; color:#2E1A0A;">新增购买</div>
         
-        <div style="display:flex; gap:8px; margin-bottom:8px;">
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
             <input type="text" id="f-category" placeholder="大类 (如: 食品)" list="cat-list" style="flex:1; margin-bottom:0;">
             <datalist id="cat-list"></datalist>
             <input type="text" id="f-name" placeholder="名称 (如: 桶装水)" oninput="updateSuggestions()" list="name-list" style="flex:2; margin-bottom:0;">
             <datalist id="name-list"></datalist>
         </div>
 
-        <div style="display:flex; gap:8px; margin-bottom:8px;">
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
             <input type="text" id="f-brand" placeholder="品牌 (选填)" list="brand-list" style="flex:1; margin-bottom:0;">
             <datalist id="brand-list"></datalist>
             <input type="text" id="f-model" placeholder="型号 (选填)" list="model-list" style="flex:1; margin-bottom:0;">
             <datalist id="model-list"></datalist>
         </div>
         
-        <div style="display:flex; gap:8px; margin-bottom:8px;">
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
             <input type="number" id="f-specNum" placeholder="容量" style="flex:2; margin-bottom:0;">
             <input type="text" id="f-specUnit" placeholder="单位(L)" value="L" style="flex:1; margin-bottom:0;" list="spec-unit-list">
             <datalist id="spec-unit-list"><option value="L"><option value="ml"><option value="kg"><option value="g"><option value="mm"><option value="件"></datalist>
         </div>
 
-        <div style="display:flex; gap:8px; margin-bottom:8px;">
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
             <input type="number" id="f-totalPrice" placeholder="总额" style="flex:2; margin-bottom:0;">
-            <input type="number" id="f-qty" placeholder="数" value="1" style="flex:1; margin-bottom:0;">
-            <input type="text" id="f-packageUnit" placeholder="单位(桶)" value="件" style="flex:1; margin-bottom:0;" list="pkg-list">
+            <input type="number" id="f-qty" placeholder="数量" value="1" style="flex:1; margin-bottom:0;">
+            <input type="text" id="f-packageUnit" placeholder="包装(桶)" value="件" style="flex:1; margin-bottom:0;" list="pkg-list">
             <datalist id="pkg-list"><option value="件"><option value="桶"><option value="箱"><option value="盒"><option value="提"><option value="包"><option value="排"><option value="板"></datalist>
         </div>
         
@@ -140,10 +149,10 @@
         <input type="text" id="f-remark" placeholder="备注 (选填)" style="background:#fffcf2;">
         
         <div class="btn-group">
-            <button style="background:#eee; color:#666;" onclick="closeModal()">取消</button>
-            <button style="background:var(--accent); color:white;" onclick="handleSave()">保存</button>
+            <button style="background:#F0EBE1; color:#7A6859;" onclick="closeModal()">取消</button>
+            <button style="background:var(--accent); color:white;" onclick="handleSave()">保存记录</button>
         </div>
-        <button id="btn-delete" class="btn-del-record" onclick="deleteRecord()">删除</button>
+        <button id="btn-delete" class="btn-del-record" onclick="deleteRecord()">删除此记录</button>
     </div>
 </div>
 
@@ -195,7 +204,8 @@
             filteredData = filteredData.filter(r => 
                 (r.name && r.name.toLowerCase().includes(keyword)) || 
                 (r.brand && r.brand.toLowerCase().includes(keyword)) ||
-                (r.model && r.model.toLowerCase().includes(keyword))
+                (r.model && r.model.toLowerCase().includes(keyword)) ||
+                (r.channel && r.channel.toLowerCase().includes(keyword))
             );
         }
 
@@ -229,7 +239,7 @@
         const sidebarEl = document.getElementById('alphaSidebar');
         
         if (sortedLetters.length === 0) {
-            listEl.innerHTML = `<div style="text-align:center; color:#999; margin-top:50px;">暂无记录</div>`;
+            listEl.innerHTML = `<div style="text-align:center; color:#BDB1A6; margin-top:80px; font-size:14px;">暂无记录数据</div>`;
             sidebarEl.innerHTML = ''; return;
         }
 
@@ -262,7 +272,7 @@
                 html += `
                 <div class="group-card" ${anchorId}>
                     <div class="group-header" onclick="toggleGroup('${name}')">
-                        <div class="group-title">${categoryTag} ${name} <span style="font-size:13px; color:#8a7968; font-weight:normal;">(${items.length})</span></div>
+                        <div class="group-title">${categoryTag} ${name} <span style="font-size:13px; color:#B0A398; font-weight:normal;">(${items.length})</span></div>
                         <div class="group-stats">
                             <span>低:<span class="stats-highlight">¥${minPrice}</span> / 均:¥${avgPrice}</span>
                             <div class="arrow ${isCollapsed}">▼</div>
@@ -276,7 +286,6 @@
                     const modelStr = item.model ? `${item.model} | ` : '';
                     const remarkHtml = item.remark ? `<span class="remark-text">📝 ${item.remark}</span>` : '';
                     
-                    // 【全新两行排版设计，次要信息被极致压缩】
                     html += `
                         <div class="item-row ${item.is_starred ? 'is-starred' : ''}">
                             <div class="row-line">
@@ -284,14 +293,16 @@
                                     <span class="star-icon ${starActive}" onclick="toggleStar(${item.id}, ${item.is_starred}); event.stopPropagation();">★</span>
                                     ${item.channel || '未知'}
                                 </div>
+                                <div class="item-details">
+                                    ${brandStr}${modelStr}${item.specs || '-'}
+                                </div>
                                 <div class="unit-price">
-                                    ¥${item.unit_price} <span style="font-size:11px; color:#999; font-weight:normal;">/${item.unit_label || '件'}</span>
+                                    ¥${item.unit_price} <span style="font-size:11px; color:#A49385; font-weight:normal;">/${item.unit_label || '件'}</span>
                                 </div>
                             </div>
                             <div class="row-line" style="margin-top:2px;">
                                 <div class="details-container">
-                                    <span class="sub-text">${brandStr}${modelStr}${item.specs || '-'}</span>
-                                    <span class="total-info">(总¥${item.total_price}/${item.qty || 1}${item.package_unit || '件'})</span>
+                                    <span class="sub-text">共花 ¥${item.total_price} (${item.qty || 1}${item.package_unit || '件'})</span>
                                     ${remarkHtml}
                                 </div>
                                 <button class="edit-btn" onclick="openEdit(${item.id})">编辑</button>
