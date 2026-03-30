@@ -3,164 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>比价程序-同步版</title>
+    <title>比价程序 - 云同步版</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <style>
         :root {
             --bg: #F5EFE6; --nav: #241408; --accent: #7A4F2D;
             --text: #2E1A0A; --sub: #907060; --border: #E2D0BC; --white: #FFFCF8;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { 
-            margin: 0; background: var(--bg); color: var(--text); 
-            font-family: -apple-system, sans-serif; 
-            display: flex; flex-direction: column; height: 100vh;
-        }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; height: 100vh; }
+        
+        /* 顶部导航 */
+        header { background: var(--nav); padding: 40px 20px 20px; color: white; flex-shrink: 0; }
+        .nav-title { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ccc; margin-right: 5px; }
+        .status-dot.online { background: #4caf50; }
+        .status-text { font-size: 12px; color: #aaa; }
 
-        /* 顶部 - 增加安全区域适配 */
-        header { background: var(--nav); padding: 50px 20px 20px; color: white; flex-shrink: 0; }
-        .nav-sub { font-size: 10px; letter-spacing: 2px; color: #C49A6C; }
-        .nav-main-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 5px; }
-        .nav-title { font-size: 24px; font-weight: bold; }
-        .nav-stats b { font-size: 20px; color: #C49A6C; }
+        /* 列表区域 */
+        main { flex: 1; overflow-y: auto; padding: 15px; }
+        .group-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+        .group-header { padding: 15px; background: #faf4ed; font-weight: bold; font-size: 16px; border-bottom: 1px solid var(--border); }
+        .item-row { padding: 12px 15px; border-bottom: 1px dashed #eee; display: flex; justify-content: space-between; align-items: center; }
+        .item-row:last-child { border-bottom: none; }
+        .item-main { flex: 1; }
+        .price-box { text-align: right; }
+        .unit-price { font-size: 16px; font-weight: bold; color: var(--text); }
+        .sub-text { font-size: 12px; color: var(--sub); margin-top: 4px; }
+        .del-btn { color: #C06840; font-size: 12px; padding: 4px 8px; background: #fdf0ec; border-radius: 4px; border: none; cursor: pointer; margin-left: 10px; }
 
-        /* 列表区 - 保证滚动顺畅 */
-        main { flex: 1; overflow-y: auto; padding: 15px; -webkit-overflow-scrolling: touch; }
-        .group-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; }
-        .group-header { padding: 15px; display: flex; justify-content: space-between; align-items: center; }
-        .group-title { font-size: 16px; font-weight: bold; }
-
-        /* 明细项 - 手机端紧凑排版 */
-        .sub-list { background: #fff; border-top: 1px solid #f0e6da; }
-        .sub-item { padding: 12px 15px; display: flex; border-bottom: 1px solid #f0e6da; }
-        .dot { width: 8px; height: 8px; background: #4A7A50; border-radius: 50%; margin: 6px 10px 0 0; }
-        .sub-content { flex: 1; }
-        .row-top { display: flex; justify-content: space-between; font-weight: bold; }
-        .price-val { color: var(--text); }
-        .row-mid { font-size: 12px; color: var(--sub); margin: 4px 0; }
-        .row-bottom { display: flex; justify-content: space-between; font-size: 12px; color: var(--sub); margin-top: 4px; }
-        .del-btn { color: #C06840; text-decoration: underline; padding: 5px; }
-
-        /* 弹窗表单 - 手机全屏优化 */
+        /* 底部与弹窗 */
+        footer { padding: 15px 20px 30px; background: var(--bg); border-top: 1px solid var(--border); }
+        .add-btn { background: var(--accent); color: white; width: 100%; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; border: none; cursor: pointer;}
+        
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
         .modal.active { display: flex; }
-        .form-card { background: var(--white); width: 92%; padding: 20px; border-radius: 12px; }
-        input { width: 100%; background: var(--bg); border: 1px solid var(--border); padding: 12px; border-radius: 6px; margin-bottom: 10px; font-size: 16px; -webkit-appearance: none; }
-        
-        /* 底部按钮 */
-        footer { padding: 15px 20px 30px; background: var(--bg); border-top: 1px solid var(--border); }
-        .add-btn { background: var(--accent); color: white; width: 100%; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; border: none; }
+        .form-card { background: var(--white); width: 90%; max-width: 400px; padding: 20px; border-radius: 12px; }
+        input { width: 100%; background: var(--bg); border: 1px solid var(--border); padding: 12px; border-radius: 6px; margin-bottom: 10px; font-size: 16px; outline: none; }
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-group button { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; font-size: 15px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="nav-sub">PRICE CHECKER</div>
-    <div class="nav-main-row">
-        <div class="nav-title">比价程序</div>
-        <div class="nav-stats"><b id="totalCount">0</b>条</div>
+    <div class="nav-title">比价程序</div>
+    <div>
+        <span id="statusDot" class="status-dot"></span>
+        <span id="statusText" class="status-text">正在连接云端...</span>
     </div>
 </header>
 
 <main id="recordList"></main>
 
 <footer>
-    <button class="add-btn" onclick="openModal()">＋ 新增购买记录</button>
+    <button class="add-btn" onclick="openModal()">＋ 新增记录</button>
 </footer>
 
 <div class="modal" id="formModal">
     <div class="form-card">
-        <div style="font-weight:bold; margin-bottom:15px;">新增记录</div>
-        <input type="text" id="f-name" placeholder="商品名称">
+        <div style="font-weight:bold; margin-bottom:15px; font-size:18px;">新增购买</div>
+        <input type="text" id="f-name" placeholder="商品名称 (如: 农夫山泉)">
         <input type="text" id="f-brand" placeholder="品牌">
-        <input type="text" id="f-specs" placeholder="规格 (如 5L)">
+        <input type="text" id="f-specs" placeholder="规格 (如: 5L)">
         <div style="display:flex; gap:10px;">
-            <input type="number" id="f-totalPrice" placeholder="总价">
+            <input type="number" id="f-totalPrice" placeholder="总价 (元)">
             <input type="number" id="f-qty" placeholder="件数" value="1">
         </div>
-        <input type="text" id="f-channel" placeholder="渠道/平台">
-        <div style="display:flex; gap:10px; margin-top:10px;">
-            <button style="flex:1; background:#eee; padding:12px; border-radius:6px; border:none;" onclick="closeModal()">取消</button>
-            <button style="flex:1; background:var(--accent); color:white; padding:12px; border-radius:6px; border:none;" onclick="handleSave()">同步保存</button>
+        <input type="text" id="f-channel" placeholder="购买渠道 (如: 楼下超市)">
+        
+        <div class="btn-group">
+            <button style="background:#eee; color:#666;" onclick="closeModal()">取消</button>
+            <button style="background:var(--accent); color:white;" onclick="handleSave()">保存到云端</button>
         </div>
     </div>
 </div>
 
 <script>
-    // --- 配置云端 ---
+    // --- 2. 配置数据库密钥 ---
     const SUPABASE_URL = 'https://csktstukwmuitvsjjzwd.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza3RzdHVrd211aXR2c2pqendkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NTcwNzYsImV4cCI6MjA5MDQzMzA3Nn0.fc-7q3Xmr1MtZR_NdiIxQ4f3QtbtLn_T1smJM8_INlE';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const GROUP_ID = 'family_share_2026';
+    
+    const GROUP_ID = 'my_family_2026'; // 共享暗号
 
-    let expandedGroups = {};
-
+    // --- 3. 核心功能：读取并渲染数据 ---
     async function fetchRecords() {
-        const { data, error } = await _supabase.from('records').select('*').eq('group_id', GROUP_ID).order('created_at', { ascending: false });
-        if (error) return;
-        
-        document.getElementById('totalCount').innerText = data.length;
-        const groups = {};
-        data.forEach(item => {
-            if (!groups[item.name]) groups[item.name] = { name: item.name, list: [] };
-            groups[item.name].list.push(item);
-        });
-        render(Object.values(groups));
+        try {
+            const { data, error } = await _supabase
+                .from('records')
+                .select('*')
+                .eq('group_id', GROUP_ID)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            // 更新顶部状态灯为绿色
+            document.getElementById('statusDot').classList.add('online');
+            document.getElementById('statusText').innerText = `已同步 (共 ${data.length} 条记录)`;
+
+            // 按商品名称分组
+            const groups = {};
+            data.forEach(item => {
+                if (!groups[item.name]) groups[item.name] = [];
+                groups[item.name].push(item);
+            });
+
+            renderUI(groups);
+        } catch (err) {
+            document.getElementById('statusText').innerText = '连接失败: ' + err.message;
+            document.getElementById('statusText').style.color = '#ff6b6b';
+        }
     }
 
-    function render(groups) {
-        const container = document.getElementById('recordList');
-        container.innerHTML = groups.length ? '' : '<div style="text-align:center; color:#999; margin-top:40px;">云端暂无数据</div>';
-        
-        groups.forEach(g => {
-            const isExp = expandedGroups[g.name];
-            const div = document.createElement('div');
-            div.className = 'group-card';
-            div.innerHTML = `
-                <div class="group-header" onclick="toggle('${g.name}')">
-                    <span class="group-title">${g.name}</span>
-                    <span style="font-size:12px; color:#ccc;">${isExp ? '▲' : '▼'}</span>
-                </div>
-                ${isExp ? `<div class="sub-list">${g.list.map(i => `
-                    <div class="sub-item">
-                        <div class="dot"></div>
-                        <div class="sub-content">
-                            <div class="row-top"><span>${i.channel}</span><span class="price-val">¥${i.unit_price}<small style="font-size:10px;font-weight:normal">/${i.unit_label}</small></span></div>
-                            <div class="row-mid">品牌:${i.brand || '-'} | 规格:${i.specs || '-'}</div>
-                            <div class="row-bottom"><span>${i.qty}件 · 共¥${i.total_price}</span><span class="del-btn" onclick="del(${i.id})">删除</span></div>
+    // --- 4. 渲染界面 ---
+    function renderUI(groups) {
+        const listEl = document.getElementById('recordList');
+        if (Object.keys(groups).length === 0) {
+            listEl.innerHTML = '<div style="text-align:center; color:#999; margin-top:50px;">云端暂时没有记录哦<br>点击下方按钮添加一笔吧</div>';
+            return;
+        }
+
+        let html = '';
+        for (const [name, items] of Object.entries(groups)) {
+            html += `<div class="group-card">
+                        <div class="group-header">${name}</div>`;
+            items.forEach(item => {
+                html += `
+                    <div class="item-row">
+                        <div class="item-main">
+                            <div style="font-weight:bold;">${item.channel || '未知渠道'}</div>
+                            <div class="sub-text">品牌: ${item.brand || '-'} | 规格: ${item.specs || '-'}</div>
+                            <div class="sub-text">${item.qty}件 · 总价 ¥${item.total_price}</div>
                         </div>
-                    </div>`).join('')}</div>` : ''}`;
-            container.appendChild(div);
-        });
+                        <div class="price-box">
+                            <div class="unit-price">¥${item.unit_price}/件</div>
+                            <button class="del-btn" onclick="deleteRecord(${item.id})">删除</button>
+                        </div>
+                    </div>`;
+            });
+            html += `</div>`;
+        }
+        listEl.innerHTML = html;
     }
 
-    function toggle(n) { expandedGroups[n] = !expandedGroups[n]; fetchRecords(); }
-    function openModal() { document.getElementById('formModal').classList.add('active'); }
-    function closeModal() { document.getElementById('formModal').classList.remove('active'); }
-
+    // --- 5. 保存数据 ---
     async function handleSave() {
         const name = document.getElementById('f-name').value;
-        const price = parseFloat(document.getElementById('f-totalPrice').value);
+        const total = parseFloat(document.getElementById('f-totalPrice').value);
         const qty = parseInt(document.getElementById('f-qty').value) || 1;
-        if (!name || isNaN(price)) return alert('请填写名称和价格');
+
+        if (!name || isNaN(total)) {
+            return alert('【商品名称】和【总价】必须要填哦！');
+        }
+
+        // 计算单价
+        const unitPrice = parseFloat((total / qty).toFixed(2));
 
         const { error } = await _supabase.from('records').insert([{
-            name, brand: document.getElementById('f-brand').value,
+            name: name,
+            brand: document.getElementById('f-brand').value,
             specs: document.getElementById('f-specs').value,
-            total_price: price, unit_price: parseFloat((price/qty).toFixed(2)),
-            unit_label: '件', channel: document.getElementById('f-channel').value,
+            total_price: total,
+            unit_price: unitPrice,
+            unit_label: '件',
+            channel: document.getElementById('f-channel').value,
             group_id: GROUP_ID
         }]);
 
-        if (error) alert('保存失败');
-        else { closeModal(); resetForm(); fetchRecords(); }
+        if (error) {
+            alert('保存失败: ' + error.message);
+        } else {
+            // 清空表单并关弹窗
+            document.querySelectorAll('input').forEach(input => input.value = '');
+            document.getElementById('f-qty').value = '1';
+            closeModal();
+            fetchRecords(); // 重新拉取
+        }
     }
 
-    async function del(id) { if(confirm('确认删除？')) { await _supabase.from('records').delete().eq('id', id); fetchRecords(); } }
-    function resetForm() { document.querySelectorAll('input').forEach(i => i.value = (i.id==='f-qty'?'1':'')); }
+    // --- 6. 删除数据 ---
+    async function deleteRecord(id) {
+        if (!confirm('确定要删除这条记录吗？')) return;
+        const { error } = await _supabase.from('records').delete().eq('id', id);
+        if (error) alert('删除失败: ' + error.message);
+        else fetchRecords();
+    }
 
-    document.addEventListener('DOMContentLoaded', fetchRecords);
-    _supabase.channel('any').on('postgres_changes', { event: '*', table: 'records' }, fetchRecords).subscribe();
+    // 弹窗控制
+    function openModal() { document.getElementById('formModal').classList.add('active'); }
+    function closeModal() { document.getElementById('formModal').classList.remove('active'); }
+
+    // --- 初始化与实时同步 ---
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchRecords();
+        // 开启自动同步监听
+        _supabase.channel('any').on('postgres_changes', { event: '*', table: 'records' }, fetchRecords).subscribe();
+    });
 </script>
+
 </body>
 </html>
