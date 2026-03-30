@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>比价程序 - 云同步版 v5.0</title>
+    <title>比价程序 - 云同步版 v6.0</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
@@ -24,6 +24,7 @@
         .group-header { padding: 15px; background: #faf4ed; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .group-title-area { display: flex; flex-direction: column; }
         .group-title { font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+        .cat-tag { font-size: 11px; background: #e8e0d5; color: var(--accent); padding: 2px 6px; border-radius: 4px; font-weight: normal; }
         .group-stats { font-size: 11px; color: var(--sub); margin-top: 4px; display: flex; gap: 10px; }
         .stats-highlight { color: #C06840; font-weight: bold; }
         .arrow { font-size: 12px; color: #999; transition: transform 0.3s; }
@@ -81,14 +82,19 @@
     <div class="form-card">
         <div id="modalTitle" style="font-weight:bold; margin-bottom:15px; font-size:18px; border-left:4px solid var(--accent); padding-left:8px;">新增购买</div>
         
-        <input type="text" id="f-name" placeholder="一级分类/商品名称 (如: 桶装水)" oninput="updateSuggestions()" list="name-list">
-        <datalist id="name-list"></datalist>
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <input type="text" id="f-category" placeholder="大类 (如: 食品)" list="cat-list" style="flex:1; margin-bottom:0;">
+            <datalist id="cat-list"></datalist>
+
+            <input type="text" id="f-name" placeholder="商品名称 (如: 桶装水)" oninput="updateSuggestions()" list="name-list" style="flex:2; margin-bottom:0;">
+            <datalist id="name-list"></datalist>
+        </div>
 
         <div style="display:flex; gap:10px; margin-bottom:10px;">
             <input type="text" id="f-brand" placeholder="品牌 (选填)" list="brand-list" style="flex:1; margin-bottom:0;">
             <datalist id="brand-list"></datalist>
             
-            <input type="text" id="f-model" placeholder="型号 (选填,如纯净水)" list="model-list" style="flex:1; margin-bottom:0;">
+            <input type="text" id="f-model" placeholder="型号 (选填)" list="model-list" style="flex:1; margin-bottom:0;">
             <datalist id="model-list"></datalist>
         </div>
         
@@ -141,7 +147,7 @@
             document.getElementById('statusDot').classList.add('online');
             document.getElementById('statusText').innerText = `已同步 (共 ${data.length} 条记录)`;
             
-            updateNameList(); // 更新大类下拉提示
+            updateNameList(); 
 
             const groups = {};
             data.forEach(item => {
@@ -167,6 +173,9 @@
             const avgPrice = (items.reduce((sum, i) => sum + i.unit_price, 0) / items.length).toFixed(2);
             const unit = items[0].unit_label || '件';
             
+            // 提取这个商品名称对应的大类（取第一条数据的分类）
+            const categoryTag = items[0].category ? `<span class="cat-tag">${items[0].category}</span>` : '';
+            
             const isCollapsed = collapsedGroups[name] ? 'collapsed' : '';
             const listHidden = collapsedGroups[name] ? 'hidden' : '';
 
@@ -174,7 +183,7 @@
             <div class="group-card">
                 <div class="group-header" onclick="toggleGroup('${name}')">
                     <div class="group-title-area">
-                        <div class="group-title">${name} <span style="font-size:12px; font-weight:normal; color:#999;">(${items.length}条)</span></div>
+                        <div class="group-title">${categoryTag} ${name} <span style="font-size:12px; font-weight:normal; color:#999;">(${items.length}条)</span></div>
                         <div class="group-stats">
                             <span>史低: <span class="stats-highlight">¥${minPrice}</span>/${unit}</span>
                             <span>均价: ¥${avgPrice}/${unit}</span>
@@ -189,9 +198,10 @@
                 const starActive = item.is_starred ? 'active' : '';
                 const rowHighlight = item.is_starred ? 'is-starred' : '';
                 const remarkHtml = item.remark ? `<div class="remark-text">📝 ${item.remark}</div>` : '';
-                
-                // 拼接规格行，如果有型号就展示
                 const modelStr = item.model ? `型号: ${item.model} | ` : '';
+                
+                // 修复 undefined：现在会直接显示存入的 qty，如果是以前没存 qty 的旧数据，显示 1
+                const displayQty = item.qty || 1;
 
                 html += `
                     <div class="item-row ${rowHighlight}">
@@ -201,7 +211,7 @@
                                 ${item.channel || '未知渠道'}
                             </div>
                             <div class="sub-text">品牌: ${item.brand || '-'} | ${modelStr}规格: ${item.specs || '-'}</div>
-                            <div class="sub-text">合计 ¥${item.total_price} (买了 ${item.qty}件)</div>
+                            <div class="sub-text">合计 ¥${item.total_price} (买了 ${displayQty}件)</div>
                             ${remarkHtml}
                         </div>
                         <div class="price-box">
@@ -217,17 +227,19 @@
         listEl.innerHTML = html;
     }
 
-    // --- 智能提示逻辑 (DataList) ---
+    // --- 提取自动补全列表 ---
     function updateNameList() {
         const names = [...new Set(allRecords.map(r => r.name).filter(n => n))];
         document.getElementById('name-list').innerHTML = names.map(n => `<option value="${n}">`).join('');
         
-        // 顺便把所有出现过的渠道提取出来做提示
         const channels = [...new Set(allRecords.map(r => r.channel).filter(c => c))];
         document.getElementById('channel-list').innerHTML = channels.map(c => `<option value="${c}">`).join('');
+
+        const categories = [...new Set(allRecords.map(r => r.category).filter(c => c))];
+        document.getElementById('cat-list').innerHTML = categories.map(c => `<option value="${c}">`).join('');
     }
 
-    // 当用户输入“一级分类”时，自动筛选出属于这个分类的“品牌”和“型号”
+    // --- 【重磅新功能】输入商品名称时，自动绑定大类、品牌、型号提示 ---
     function updateSuggestions() {
         const currentName = document.getElementById('f-name').value.trim();
         const brandList = document.getElementById('brand-list');
@@ -239,6 +251,14 @@
 
         const brands = new Set();
         const models = new Set();
+        
+        // 查找是否已经有该商品的记录
+        const matchRecord = allRecords.find(r => r.name === currentName && r.category);
+        
+        // 自动填入大类 (如果用户没有手动填的话)
+        if (matchRecord && !document.getElementById('f-category').value) {
+            document.getElementById('f-category').value = matchRecord.category;
+        }
 
         allRecords.forEach(r => {
             if (r.name === currentName) {
@@ -272,8 +292,8 @@
         document.querySelectorAll('.form-card input').forEach(input => input.value = '');
         document.getElementById('f-qty').value = '1';
         document.getElementById('f-specUnit').value = 'L';
-        document.getElementById('btn-delete').style.display = 'none'; // 新增模式隐藏删除按钮
-        updateSuggestions(); // 清空联动提示
+        document.getElementById('btn-delete').style.display = 'none'; 
+        updateSuggestions(); 
         document.getElementById('formModal').classList.add('active');
     }
 
@@ -283,9 +303,10 @@
         if(!item) return;
 
         document.getElementById('modalTitle').innerText = '修改记录';
+        document.getElementById('f-category').value = item.category || ''; // 读取大类
         document.getElementById('f-name').value = item.name;
         document.getElementById('f-brand').value = item.brand || '';
-        document.getElementById('f-model').value = item.model || ''; // 读取型号
+        document.getElementById('f-model').value = item.model || ''; 
         document.getElementById('f-channel').value = item.channel || '';
         document.getElementById('f-totalPrice').value = item.total_price;
         document.getElementById('f-remark').value = item.remark || '';
@@ -297,17 +318,13 @@
             if (match) specNum = parseFloat(match[1]);
         }
         
-        let qty = 1;
-        if (item.unit_price > 0 && item.total_price > 0) {
-            qty = Math.round((item.total_price / item.unit_price) / specNum) || 1;
-        }
-
+        // 读取真实的 qty，如果是旧数据就显示 1
+        document.getElementById('f-qty').value = item.qty || 1;
         document.getElementById('f-specNum').value = specNum;
         document.getElementById('f-specUnit').value = specUnit;
-        document.getElementById('f-qty').value = qty;
 
-        updateSuggestions(); // 根据当前 name 填充联动提示
-        document.getElementById('btn-delete').style.display = 'block'; // 编辑模式显示删除按钮
+        updateSuggestions(); 
+        document.getElementById('btn-delete').style.display = 'block'; 
         document.getElementById('formModal').classList.add('active');
     }
 
@@ -315,6 +332,7 @@
 
     async function handleSave() {
         const name = document.getElementById('f-name').value;
+        const category = document.getElementById('f-category').value; // 获取大类
         const total = parseFloat(document.getElementById('f-totalPrice').value);
         const qty = parseInt(document.getElementById('f-qty').value) || 1;
         const specNum = parseFloat(document.getElementById('f-specNum').value) || 1;
@@ -326,15 +344,17 @@
         const specsStr = `${specNum}${specUnit}`;
 
         const recordData = {
+            category: category, // 存入大类
             name: name,
             brand: document.getElementById('f-brand').value,
-            model: document.getElementById('f-model').value, // 存入型号
+            model: document.getElementById('f-model').value, 
             specs: specsStr,
             total_price: total,
             unit_price: unitPrice,
             unit_label: specUnit,
             channel: document.getElementById('f-channel').value,
             remark: document.getElementById('f-remark').value,
+            qty: qty, // 存入真实的购买件数！解决 undefined 问题
             group_id: GROUP_ID
         };
 
@@ -348,7 +368,6 @@
         fetchRecords(); 
     }
 
-    // 将删除函数移到内部，由删除按钮调用
     async function deleteRecord() {
         if (!currentEditId) return;
         if (!confirm('确定要永久删除这条记录吗？\n删除后不可恢复！')) return;
