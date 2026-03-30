@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="省钱雷达">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#241408">
+<title>省钱雷达</title>
+<style>
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { margin: 0; padding: 0; background: #F5EFE6; font-family: Georgia, serif; }
+input, select, button { font-family: Georgia, serif; }
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect } = React;
+const T = { bg:'#F5EFE6',card:'#FFFCF8',primary:'#7A4F2D',light:'#C49A6C',accent:'#C06840',soft:'#EFE0CE',lowest:'#4A7A50',highest:'#B03020',text:'#2E1A0A',sub:'#907060',border:'#E2D0BC',nav:'#241408',navActive:'#C49A6C' };
+const DEFAULT_CATS=['食品','日用','其他'];
+const INPUT_MODES=[{key:'total',label:'总价模式',hint:'买了多少量，花多少钱'},{key:'unit',label:'单价模式',hint:'直接输入每单位价格'}];
+const ALL_UNITS=['斤','kg','g','L','ml','cc','件','包','盒','瓶','罐','袋','条','颗'];
+const DOT_COLORS=['#4A7A50','#7A4F2D','#B03020','#C49A6C','#5B6FA0','#A05080','#6A8A40','#909090'];
+const DEF_SPEC=['品牌','规格','类型'];
+
+function calcUnitPrice(totalPrice,qty,inputUnit,weightBase='jin'){
+  if(!totalPrice||!qty)return null;
+  const p=parseFloat(totalPrice),q=parseFloat(qty);
+  if(isNaN(p)||isNaN(q)||q===0)return null;
+  if(['斤','kg','g'].includes(inputUnit)){
+    let perKg=inputUnit==='kg'?p/q:inputUnit==='斤'?p/q/0.5:p/q*1000;
+    return weightBase==='kg'?{unitPrice:perKg,displayUnit:'元/kg'}:{unitPrice:perKg*0.5,displayUnit:'元/斤'};
+  }
+  if(['L','ml','cc'].includes(inputUnit))return{unitPrice:inputUnit==='L'?p/q:p/q*1000,displayUnit:'元/L'};
+  return{unitPrice:p/q,displayUnit:`元/${inputUnit}`};
+}
+function unitPriceDirect(price,unit){
+  if(!price)return null;
+  const p=parseFloat(price);
+  return isNaN(p)?null:{unitPrice:p,displayUnit:`元/${unit}`};
+}
+
+function Icon({d,size=20,stroke=T.sub,sw=1.6}){
+  return React.createElement('svg',{width:size,height:size,viewBox:'0 0 24 24',fill:'none',stroke,strokeWidth:sw,strokeLinecap:'round',strokeLinejoin:'round'},
+    Array.isArray(d)?d.map((p,i)=>React.createElement('path',{key:i,d:p})):React.createElement('path',{d})
+  );
+}
+const IC={
+  list:"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12h6M9 16h4",
+  chart:["M18 20V10","M12 20V4","M6 20v-6"],
+  plus:["M12 5v14","M5 12h14"],
+  edit:"M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z",
+  trash:["M3 6h18","M8 6V4h8v2","M19 6l-1 14H6L5 6"],
+  search:"M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z",
+  chevD:"M6 9l6 6 6-6",chevU:"M18 15l-6-6-6 6",
+  tag:"M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82zM7 7h.01",
+  store:["M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z","M9 22V12h6v10"],
+  pkg:["M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z","M3.27 6.96L12 12.01l8.73-5.05","M12 22.08V12"],
+  coin:["M12 2a10 10 0 100 20A10 10 0 0012 2z","M12 6v6l4 2"],
+  gear:["M12 15a3 3 0 100-6 3 3 0 000 6z","M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"],
+  back:"M19 12H5M12 5l-7 7 7 7",
+  x:"M18 6L6 18M6 6l12 12"
+};
+
+function useStorage(key,init){
+  const[val,setVal]=useState(()=>{try{const s=localStorage.getItem(key);return s?JSON.parse(s):init;}catch{return init;}});
+  useEffect(()=>{try{localStorage.setItem(key,JSON.stringify(val));}catch{}},[key,val]);
+  return[val,setVal];
+}
+
+function SuggestInput({label,value,onChange,suggestions,placeholder,style}){
+  const[open,setOpen]=useState(false);
+  const opts=[...new Set(suggestions)].filter(s=>s&&s!==value&&s.toLowerCase().includes((value||'').toLowerCase())).slice(0,5);
+  const s={width:'100%',padding:'10px 12px',borderRadius:9,border:`1.5px solid ${T.border}`,boxSizing:'border-box',fontSize:14,background:'#fff',color:T.text,outline:'none',fontFamily:'inherit'};
+  return(
+    <div style={{position:'relative',...style}}>
+      {label&&<div style={{fontSize:12,color:T.sub,marginBottom:4,fontFamily:'sans-serif'}}>{label}</div>}
+      <input value={value||''} onChange={e=>{onChange(e.target.value);setOpen(true);}} onFocus={()=>setOpen(true)} onBlur={()=>setTimeout(()=>setOpen(false),150)} placeholder={placeholder||label} style={s}/>
+      {open&&opts.length>0&&(
+        <div style={{position:'absolute',top:'100%',left:0,right:0,background:'#fff',border:`1px solid ${T.border}`,borderRadius:8,zIndex:300,boxShadow:'0 4px 12px rgba(0,0,0,0.12)',overflow:'hidden'}}>
+          {opts.map(s=>(
+            <div key={s} onMouseDown={()=>{onChange(s);setOpen(false);}} onTouchStart={()=>{onChange(s);setOpen(false);}}
+              style={{padding:'10px 12px',fontSize:13,color:T.text,cursor:'pointer',borderBottom:`1px solid ${T.border}`}}>{s}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const mkForm=(cats)=>({name:'',cat:cats[0]||'',channel:'',color:DOT_COLORS[0],inputMode:'total',qty:'',qtyUnit:'斤',totalPrice:'',unitPrice:'',unitPriceUnit:'斤',spec1:'',spec2:'',spec3:'',note:''});
+
+function App(){
+  const[records,setRecords]=useStorage('pr_v6_records',[]);
+  const[cats,setCats]=useStorage('pr_v6_cats',DEFAULT_CATS);
+  const[weightBase,setWeightBase]=useStorage('pr_v6_wbase','jin');
+  const[specLabels,setSpecLabels]=useStorage('pr_v6_specs',DEF_SPEC);
+  const[tab,setTab]=useState('list');
+  const[form,setForm]=useState(()=>mkForm(DEFAULT_CATS));
+  const[editId,setEditId]=useState(null);
+  const[showForm,setShowForm]=useState(false);
+  const[search,setSearch]=useState('');
+  const[filterCat,setFilterCat]=useState('全部');
+  const[expanded,setExpanded]=useState({});
+  const[newCat,setNewCat]=useState('');
+  const[editingSpec,setEditingSpec]=useState(false);
+  const[tempSpec,setTempSpec]=useState([...DEF_SPEC]);
+
+  const getUP=r=>r.inputMode==='unit'?unitPriceDirect(r.unitPrice,r.unitPriceUnit):calcUnitPrice(r.totalPrice,r.qty,r.qtyUnit,weightBase);
+  const hist={
+    names:[...new Set(records.map(r=>r.name).filter(Boolean))],
+    channels:[...new Set(records.map(r=>r.channel).filter(Boolean))],
+    spec1:[...new Set(records.filter(r=>r.cat===form.cat).map(r=>r.spec1).filter(Boolean))],
+    spec2:[...new Set(records.filter(r=>r.cat===form.cat).map(r=>r.spec2).filter(Boolean))],
+    spec3:[...new Set(records.filter(r=>r.cat===form.cat).map(r=>r.spec3).filter(Boolean))],
+  };
+  const filtered=records.filter(r=>(filterCat==='全部'||r.cat===filterCat)&&[r.name,r.channel,r.spec1,r.spec2,r.spec3].some(v=>v&&v.includes(search)));
+  const groups=filtered.reduce((a,r)=>{(a[r.name]=a[r.name]||[]).push(r);return a;},{});
+  const allGroups=records.reduce((a,r)=>{(a[r.name]=a[r.name]||[]).push(r);return a;},{});
+  const submit=()=>{
+    if(!form.name||!form.channel)return alert('请填写商品名称和渠道');
+    if(form.inputMode==='total'&&(!form.qty||!form.totalPrice))return alert('请填写数量和总价');
+    if(form.inputMode==='unit'&&!form.unitPrice)return alert('请填写单价');
+    const e={...form,id:editId||Date.now()};
+    setRecords(rs=>editId?rs.map(r=>r.id===editId?e:r):[...rs,e]);
+    setForm(mkForm(cats));setEditId(null);setShowForm(false);
+  };
+  const doEdit=r=>{setForm({...mkForm(cats),...r});setEditId(r.id);setShowForm(true);};
+  const doDelete=id=>{if(window.confirm('确定删除？'))setRecords(rs=>rs.filter(r=>r.id!==id));};
+  const toggle=name=>setExpanded(e=>({...e,[name]:!e[name]}));
+  const closeForm=()=>{setShowForm(false);setEditId(null);setForm(mkForm(cats));};
+  const chFreq=records.reduce((a,r)=>{a[r.channel]=(a[r.channel]||0)+1;return a;},{});
+  const maxF=Math.max(...Object.values(chFreq),1);
+  const catFreq=records.reduce((a,r)=>{a[r.cat]=(a[r.cat]||0)+1;return a;},{});
+  const specStr=r=>[r.spec1&&`${specLabels[0]}:${r.spec1}`,r.spec2&&`${specLabels[1]}:${r.spec2}`,r.spec3&&`${specLabels[2]}:${r.spec3}`].filter(Boolean).join('  ');
+  const inp={width:'100%',padding:'10px 12px',borderRadius:9,border:`1.5px solid ${T.border}`,boxSizing:'border-box',fontSize:14,background:'#fff',color:T.text,outline:'none',fontFamily:'inherit'};
+
+  if(tab==='settings')return(
+    <div style={{fontFamily:'Georgia,serif',maxWidth:430,margin:'0 auto',background:T.bg,minHeight:'100vh'}}>
+      <div style={{background:T.nav,padding:'16px 20px 13px',display:'flex',alignItems:'center',gap:12}}>
+        <button onClick={()=>setTab('list')} style={{border:'none',background:'none',cursor:'pointer',padding:0,display:'flex'}}><Icon d={IC.back} size={22} stroke={T.navActive}/></button>
+        <div style={{color:'#fff',fontSize:19,fontWeight:700}}>设置</div>
+      </div>
+      <div style={{padding:'16px 14px'}}>
+        <div style={{background:T.card,borderRadius:11,padding:14,border:`1px solid ${T.border}`,marginBottom:12}}>
+          <div style={{fontWeight:700,fontSize:14,color:T.text,marginBottom:12,fontFamily:'sans-serif'}}>自定义分类</div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:12}}>
+            {cats.map(c=>(
+              <div key={c} style={{display:'flex',alignItems:'center',background:T.soft,borderRadius:20,paddingLeft:12,overflow:'hidden'}}>
+                <span style={{fontSize:13,color:T.primary,fontFamily:'sans-serif'}}>{c}</span>
+                <button onClick={()=>{if(cats.length<=1){alert('至少保留一个分类');return;}setCats(cs=>cs.filter(x=>x!==c));}} style={{border:'none',background:'none',cursor:'pointer',padding:'8px 10px',display:'flex'}}><Icon d={IC.x} size={13} stroke={T.sub} sw={2}/></button>
+              </div>
+            ))}
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            <input value={newCat} onChange={e=>setNewCat(e.target.value)} placeholder="新分类名称" onKeyDown={e=>{if(e.key==='Enter'&&newCat.trim()){setCats(cs=>[...cs,newCat.trim()]);setNewCat('');}}} style={{...inp,flex:1,padding:'9px 12px'}}/>
+            <button onClick={()=>{if(!newCat.trim())return;setCats(cs=>[...cs,newCat.trim()]);setNewCat('');}} style={{padding:'9px 16px',background:T.primary,color:'#fff',border:'none',borderRadius:9,cursor:'pointer',fontFamily:'sans-serif',fontSize:13,fontWeight:600}}>添加</button>
+          </div>
+        </div>
+        <div style={{background:T.card,borderRadius:11,padding:14,border:`1px solid ${T.border}`,marginBottom:12}}>
+          <div style={{fontWeight:700,fontSize:14,color:T.text,marginBottom:10,fontFamily:'sans-serif'}}>重量换算基准单位</div>
+          <div style={{display:'flex',gap:8}}>
+            {[['jin','元/斤'],['kg','元/kg']].map(([k,l])=>(
+              <button key={k} onClick={()=>setWeightBase(k)} style={{flex:1,padding:'10px',borderRadius:9,border:`1.5px solid ${weightBase===k?T.primary:T.border}`,background:weightBase===k?T.soft:'#fff',color:weightBase===k?T.primary:T.sub,cursor:'pointer',fontFamily:'sans-serif',fontSize:14,fontWeight:weightBase===k?700:400}}>{l}</button>
+            ))}
+          </div>
+          <div style={{fontSize:12,color:T.sub,fontFamily:'sans-serif',marginTop:8}}>容量固定换算为 元/L</div>
+        </div>
+        <div style={{background:T.card,borderRadius:11,padding:14,border:`1px solid ${T.border}`}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+            <div style={{fontWeight:700,fontSize:14,color:T.text,fontFamily:'sans-serif'}}>规格字段名称</div>
+            <button onClick={()=>{if(editingSpec){setSpecLabels(tempSpec);}else{setTempSpec([...specLabels]);}setEditingSpec(!editingSpec);}} style={{border:'none',background:editingSpec?T.primary:T.soft,color:editingSpec?'#fff':T.primary,borderRadius:7,padding:'5px 12px',cursor:'pointer',fontSize:12,fontFamily:'sans-serif',fontWeight:600}}>{editingSpec?'保存':'编辑'}</button>
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            {(editingSpec?tempSpec:specLabels).map((f,i)=>editingSpec
+              ?<input key={i} value={tempSpec[i]} onChange={e=>setTempSpec(ts=>ts.map((v,j)=>j===i?e.target.value:v))} style={{flex:1,padding:'8px 10px',borderRadius:8,border:`1.5px solid ${T.border}`,fontSize:13,color:T.text,outline:'none',background:'#fff'}}/>
+              :<div key={i} style={{flex:1,background:T.soft,borderRadius:8,padding:'7px 10px',fontSize:13,color:T.primary,fontFamily:'sans-serif',textAlign:'center'}}>{f}</div>
+            )}
+          </div>
+          {editingSpec&&<button onClick={()=>setTempSpec([...DEF_SPEC])} style={{border:'none',background:'none',color:T.sub,fontSize:12,fontFamily:'sans-serif',cursor:'pointer',textDecoration:'underline',marginTop:8}}>恢复默认</button>}
+        </div>
+      </div>
+    </div>
+  );
+
+  return(
+    <div style={{fontFamily:'Georgia,serif',maxWidth:430,margin:'0 auto',background:T.bg,minHeight:'100vh',display:'flex',flexDirection:'column'}}>
+      <div style={{background:T.nav,padding:'16px 20px 13px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div>
+          <div style={{color:T.navActive,fontSize:10,letterSpacing:3,fontFamily:'sans-serif',marginBottom:3}}>PRICE TRACKER</div>
+          <div style={{color:'#fff',fontSize:21,fontWeight:700}}>省钱雷达</div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:14}}>
+          <div style={{textAlign:'right'}}>
+            <div style={{color:T.navActive,fontSize:22,fontWeight:700,fontFamily:'sans-serif'}}>{records.length}</div>
+            <div style={{color:'#999',fontSize:11,fontFamily:'sans-serif'}}>条记录</div>
+          </div>
+          <button onClick={()=>setTab('settings')} style={{border:'none',background:'none',cursor:'pointer',padding:4,display:'flex'}}><Icon d={IC.gear} size={22} stroke='#999'/></button>
+        </div>
+      </div>
+
+      <div style={{flex:1,overflowY:'auto',paddingBottom:78}}>
+        {tab==='list'&&(
+          <div style={{padding:'13px 12px'}}>
+            <div style={{position:'relative',marginBottom:9}}>
+              <span style={{position:'absolute',left:11,top:'50%',transform:'translateY(-50%)'}}><Icon d={IC.search} size={16} stroke={T.sub}/></span>
+              <input placeholder="搜索商品、渠道或规格" value={search} onChange={e=>setSearch(e.target.value)} style={{...inp,paddingLeft:36,background:T.card}}/>
+            </div>
+            <div style={{display:'flex',gap:5,flexWrap:'wrap',marginBottom:13}}>
+              {['全部',...cats].map(c=>(
+                <button key={c} onClick={()=>setFilterCat(c)} style={{padding:'5px 12px',borderRadius:20,border:'none',cursor:'pointer',fontSize:12,fontFamily:'sans-serif',background:filterCat===c?T.primary:T.soft,color:filterCat===c?'#fff':T.primary,fontWeight:filterCat===c?600:400}}>{c}</button>
+              ))}
+            </div>
+            {Object.keys(groups).length===0&&(
+              <div style={{textAlign:'center',color:T.sub,marginTop:70}}>
+                <Icon d={IC.pkg} size={44} stroke={T.border} sw={1}/>
+                <div style={{marginTop:14,fontSize:15,fontFamily:'sans-serif'}}>还没有记录</div>
+                <div style={{fontSize:12,marginTop:4,color:T.border,fontFamily:'sans-serif'}}>点下方按钮开始添加</div>
+              </div>
+            )}
+            {Object.entries(groups).map(([name,items])=>{
+              const ups=items.map(r=>({r,up:getUP(r)}));
+              const vups=ups.filter(x=>x.up);
+              const sameUnit=vups.length>1&&new Set(vups.map(x=>x.up.displayUnit)).size===1;
+              const minUP=sameUnit?Math.min(...vups.map(x=>x.up.unitPrice)):null;
+              const maxUP=sameUnit?Math.max(...vups.map(x=>x.up.unitPrice)):null;
+              const isExp=expanded[name],hasMulti=items.length>1;
+              return(
+                <div key={name} style={{background:T.card,borderRadius:11,marginBottom:9,overflow:'hidden',border:`1px solid ${T.border}`}}>
+                  <div onClick={()=>hasMulti&&toggle(name)} style={{padding:'12px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:hasMulti?'pointer':'default'}}>
+                    <div style={{flex:1}}>
+                      <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:hasMulti?4:0}}>
+                        <span style={{fontWeight:700,fontSize:15,color:T.text}}>{name}</span>
+                        {items[0].cat&&<span style={{fontSize:11,color:T.primary,background:T.soft,padding:'1px 7px',borderRadius:9,fontFamily:'sans-serif'}}>{items[0].cat}</span>}
+                      </div>
+                      {sameUnit&&<div style={{fontSize:12,fontFamily:'sans-serif',color:T.sub}}>最低 <span style={{color:T.lowest,fontWeight:600}}>¥{minUP.toFixed(2)}</span> | 最高 <span style={{color:T.highest,fontWeight:600}}>¥{maxUP.toFixed(2)}</span> <span style={{fontSize:11,color:T.sub}}>({vups[0].up.displayUnit.split('/')[1]})</span></div>}
+                      {!sameUnit&&hasMulti&&<div style={{fontSize:11,color:T.sub,fontFamily:'sans-serif'}}>单位不同，展开查看详情</div>}
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      {!hasMulti&&ups[0].up&&<span style={{fontSize:13,color:T.light,fontFamily:'sans-serif'}}>¥{ups[0].up.unitPrice.toFixed(2)}/{ups[0].up.displayUnit.split('/')[1]}</span>}
+                      {hasMulti&&<Icon d={isExp?IC.chevU:IC.chevD} size={18} stroke={T.sub}/>}
+                    </div>
+                  </div>
+                  {(isExp||!hasMulti)&&[...ups].sort((a,b)=>(!a.up||!b.up)?0:a.up.unitPrice-b.up.unitPrice).map(({r,up},i)=>{
+                    const ss=specStr(r);
+                    const isLow=sameUnit&&up&&up.unitPrice===minUP;
+                    const isHigh=sameUnit&&up&&up.unitPrice===maxUP&&maxUP!==minUP;
+                    return(
+                      <div key={r.id} style={{display:'flex',alignItems:'center',padding:'9px 14px',borderTop:`1px solid ${T.border}`,gap:9,background:i%2?T.bg:'#fff'}}>
+                        <div style={{width:10,height:10,borderRadius:'50%',background:r.color,flexShrink:0}}/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:13,color:T.text}}>{r.channel}</div>
+                          {ss&&<div style={{fontSize:11,color:T.light,fontFamily:'sans-serif',marginTop:1}}>{ss}</div>}
+                          <div style={{fontSize:11,color:T.sub,fontFamily:'sans-serif',marginTop:1}}>{r.inputMode==='total'?`${r.qty}${r.qtyUnit} · 共¥${r.totalPrice}`:`单价 ¥${r.unitPrice}/${r.unitPriceUnit}`}</div>
+                          {r.note&&<div style={{fontSize:11,color:T.sub,fontFamily:'sans-serif',marginTop:1}}>{r.note}</div>}
+                        </div>
+                        <div style={{textAlign:'right',flexShrink:0}}>
+                          {up&&<div style={{fontWeight:700,fontSize:14,fontFamily:'sans-serif',color:isLow?T.lowest:isHigh?T.highest:T.text}}>¥{up.unitPrice.toFixed(2)}</div>}
+                          {up&&<div style={{fontSize:10,color:T.sub,fontFamily:'sans-serif'}}>{up.displayUnit}</div>}
+                        </div>
+                        <button onClick={()=>doEdit(r)} style={{border:'none',background:'none',cursor:'pointer',padding:4,display:'flex',flexShrink:0}}><Icon d={IC.edit} size={16} stroke={T.sub}/></button>
+                        <button onClick={()=>doDelete(r.id)} style={{border:'none',background:'none',cursor:'pointer',padding:4,display:'flex',flexShrink:0}}><Icon d={IC.trash} size={16} stroke={T.sub}/></button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab==='stats'&&(
+          <div style={{padding:'14px 12px'}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:9,marginBottom:12}}>
+              {[[IC.list,'总记录',records.length,'条'],[IC.tag,'商品种类',Object.keys(allGroups).length,'种'],[IC.store,'渠道数',Object.keys(chFreq).length,'个'],[IC.coin,'分类数',cats.length,'个']].map(([ic,l,v,u])=>(
+                <div key={l} style={{background:T.card,borderRadius:11,padding:'14px 12px',border:`1px solid ${T.border}`}}>
+                  <Icon d={ic} size={20} stroke={T.light} sw={1.5}/>
+                  <div style={{fontSize:24,fontWeight:700,color:T.primary,fontFamily:'sans-serif',margin:'8px 0 2px'}}>{v}<span style={{fontSize:12,fontWeight:400,color:T.sub}}> {u}</span></div>
+                  <div style={{fontSize:12,color:T.sub,fontFamily:'sans-serif'}}>{l}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{background:T.card,borderRadius:11,padding:14,border:`1px solid ${T.border}`,marginBottom:10}}>
+              <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:12}}><Icon d={IC.store} size={16} stroke={T.primary}/><span style={{fontWeight:700,fontSize:14,color:T.text,fontFamily:'sans-serif'}}>渠道频次</span></div>
+              {Object.entries(chFreq).sort((a,b)=>b[1]-a[1]).map(([ch,cnt])=>(
+                <div key={ch} style={{marginBottom:9}}>
+                  <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:4,fontFamily:'sans-serif'}}><span style={{color:T.text}}>{ch}</span><span style={{color:T.sub}}>{cnt} 次</span></div>
+                  <div style={{background:T.soft,borderRadius:4,height:7}}><div style={{background:T.primary,borderRadius:4,height:7,width:`${cnt/maxF*100}%`}}/></div>
+                </div>
+              ))}
+              {!Object.keys(chFreq).length&&<div style={{color:T.sub,textAlign:'center',padding:16,fontFamily:'sans-serif',fontSize:13}}>暂无数据</div>}
+            </div>
+            <div style={{background:T.card,borderRadius:11,padding:14,border:`1px solid ${T.border}`}}>
+              <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:12}}><Icon d={IC.tag} size={16} stroke={T.primary}/><span style={{fontWeight:700,fontSize:14,color:T.text,fontFamily:'sans-serif'}}>分类分布</span></div>
+              <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
+                {Object.entries(catFreq).sort((a,b)=>b[1]-a[1]).map(([cat,cnt])=>(
+                  <div key={cat} style={{background:T.soft,borderRadius:18,padding:'5px 12px',display:'flex',alignItems:'center',gap:5}}>
+                    <span style={{fontSize:12,color:T.primary,fontFamily:'sans-serif'}}>{cat}</span>
+                    <span style={{fontSize:12,fontWeight:700,color:T.accent,fontFamily:'sans-serif'}}>{cnt}</span>
+                  </div>
+                ))}
+                {!Object.keys(catFreq).length&&<div style={{color:T.sub,fontFamily:'sans-serif',fontSize:13}}>暂无数据</div>}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:430,background:T.nav,display:'flex',zIndex:100}}>
+        <button onClick={()=>{setTab('list');setShowForm(false);}} style={{flex:1,padding:'12px 0 10px',border:'none',background:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+          <Icon d={IC.list} size={22} stroke={tab==='list'?T.navActive:'#666'} sw={tab==='list'?2:1.4}/>
+          <span style={{fontSize:11,fontFamily:'sans-serif',color:tab==='list'?T.navActive:'#666'}}>记录</span>
+        </button>
+        <button onClick={()=>{setForm(mkForm(cats));setEditId(null);setShowForm(true);setTab('list');}} style={{flex:1.3,padding:'4px 0 10px',border:'none',background:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
+          <div style={{width:50,height:50,borderRadius:'50%',background:T.accent,display:'flex',alignItems:'center',justifyContent:'center',marginTop:-18,boxShadow:'0 4px 14px rgba(192,104,64,0.5)'}}>
+            <Icon d={IC.plus} size={26} stroke='#fff' sw={2.2}/>
+          </div>
+          <span style={{fontSize:11,fontFamily:'sans-serif',color:T.navActive}}>添加</span>
+        </button>
+        <button onClick={()=>{setTab('stats');setShowForm(false);}} style={{flex:1,padding:'12px 0 10px',border:'none',background:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+          <Icon d={IC.chart} size={22} stroke={tab==='stats'?T.navActive:'#666'} sw={tab==='stats'?2:1.4}/>
+          <span style={{fontSize:11,fontFamily:'sans-serif',color:tab==='stats'?T.navActive:'#666'}}>统计</span>
+        </button>
+      </div>
+
+      {showForm&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'flex-end',zIndex:200}} onClick={e=>e.target===e.currentTarget&&closeForm()}>
+          <div style={{background:T.bg,borderRadius:'18px 18px 0 0',padding:'18px 18px 28px',width:'100%',maxWidth:430,boxSizing:'border-box',maxHeight:'92vh',overflowY:'auto',margin:'0 auto'}}>
+            <div style={{width:34,height:3,background:T.border,borderRadius:2,margin:'0 auto 16px'}}/>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <span style={{fontWeight:700,fontSize:17,color:T.text}}>{editId?'编辑记录':'添加记录'}</span>
+              <button onClick={closeForm} style={{border:'none',background:T.soft,borderRadius:'50%',width:32,height:32,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon d={IC.x} size={14} stroke={T.primary} sw={2}/></button>
+            </div>
+            <SuggestInput label="商品名称" value={form.name} onChange={v=>setForm(f=>({...f,name:v}))} suggestions={hist.names} placeholder="例：桶装水、菠菜" style={{marginBottom:12}}/>
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:12,color:T.sub,marginBottom:5,fontFamily:'sans-serif'}}>分类</div>
+              <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+                {cats.map(c=><button key={c} onClick={()=>setForm(f=>({...f,cat:c}))} style={{padding:'6px 14px',borderRadius:16,border:'none',cursor:'pointer',fontSize:13,fontFamily:'sans-serif',background:form.cat===c?T.primary:T.soft,color:form.cat===c?'#fff':T.primary,fontWeight:form.cat===c?600:400}}>{c}</button>)}
+              </div>
+            </div>
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:12,color:T.sub,marginBottom:6,fontFamily:'sans-serif'}}>规格（选填）</div>
+              <div style={{display:'flex',gap:7}}>
+                {[['spec1',hist.spec1],['spec2',hist.spec2],['spec3',hist.spec3]].map(([k,h],i)=>(
+                  <SuggestInput key={k} label={specLabels[i]} value={form[k]} onChange={v=>setForm(f=>({...f,[k]:v}))} suggestions={h} style={{flex:1}}/>
+                ))}
+              </div>
+            </div>
+            <SuggestInput label="购买渠道" value={form.channel} onChange={v=>setForm(f=>({...f,channel:v}))} suggestions={hist.channels} placeholder="例：全联、京东、家乐福" style={{marginBottom:12}}/>
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:12,color:T.sub,marginBottom:6,fontFamily:'sans-serif'}}>价格输入方式</div>
+              <div style={{display:'flex',gap:8}}>
+                {INPUT_MODES.map(m=><button key={m.key} onClick={()=>setForm(f=>({...f,inputMode:m.key}))} style={{flex:1,padding:'9px',borderRadius:9,border:`1.5px solid ${form.inputMode===m.key?T.primary:T.border}`,background:form.inputMode===m.key?T.soft:'#fff',color:form.inputMode===m.key?T.primary:T.sub,cursor:'pointer',fontFamily:'sans-serif',fontSize:12,fontWeight:form.inputMode===m.key?700:400}}><div>{m.label}</div><div style={{fontSize:10,marginTop:2,color:T.sub}}>{m.hint}</div></button>)}
+              </div>
+            </div>
+            {form.inputMode==='total'&&(
+              <div style={{display:'flex',gap:8,marginBottom:12}}>
+                <div style={{flex:1.5}}><div style={{fontSize:12,color:T.sub,marginBottom:4,fontFamily:'sans-serif'}}>数量</div><input type="number" placeholder="0" value={form.qty} onChange={e=>setForm(f=>({...f,qty:e.target.value}))} style={inp}/></div>
+                <div style={{flex:1}}><div style={{fontSize:12,color:T.sub,marginBottom:4,fontFamily:'sans-serif'}}>单位</div><select value={form.qtyUnit} onChange={e=>setForm(f=>({...f,qtyUnit:e.target.value}))} style={{...inp,appearance:'none',WebkitAppearance:'none'}}>{ALL_UNITS.map(u=><option key={u}>{u}</option>)}</select></div>
+                <div style={{flex:1.5}}><div style={{fontSize:12,color:T.sub,marginBottom:4,fontFamily:'sans-serif'}}>总价（元）</div><input type="number" placeholder="0.00" value={form.totalPrice} onChange={e=>setForm(f=>({...f,totalPrice:e.target.value}))} style={inp}/></div>
+              </div>
+            )}
+            {form.inputMode==='unit'&&(
+              <div style={{display:'flex',gap:8,marginBottom:12}}>
+                <div style={{flex:2}}><div style={{fontSize:12,color:T.sub,marginBottom:4,fontFamily:'sans-serif'}}>单价（元）</div><input type="number" placeholder="0.00" value={form.unitPrice} onChange={e=>setForm(f=>({...f,unitPrice:e.target.value}))} style={inp}/></div>
+                <div style={{flex:1}}><div style={{fontSize:12,color:T.sub,marginBottom:4,fontFamily:'sans-serif'}}>每</div><select value={form.unitPriceUnit} onChange={e=>setForm(f=>({...f,unitPriceUnit:e.target.value}))} style={{...inp,appearance:'none',WebkitAppearance:'none'}}>{ALL_UNITS.map(u=><option key={u}>{u}</option>)}</select></div>
+              </div>
+            )}
+            {(()=>{const p=form.inputMode==='total'?calcUnitPrice(form.totalPrice,form.qty,form.qtyUnit,weightBase):unitPriceDirect(form.unitPrice,form.unitPriceUnit);if(!p)return null;return<div style={{background:T.soft,borderRadius:9,padding:'9px 14px',marginBottom:12,fontFamily:'sans-serif',fontSize:13,color:T.primary}}>换算单价：<strong>¥{p.unitPrice.toFixed(2)} {p.displayUnit}</strong></div>;})()}
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:12,color:T.sub,marginBottom:5,fontFamily:'sans-serif'}}>颜色标记</div>
+              <div style={{display:'flex',gap:9}}>
+                {DOT_COLORS.map(c=><div key={c} onClick={()=>setForm(f=>({...f,color:c}))} style={{width:28,height:28,borderRadius:'50%',background:c,cursor:'pointer',outline:form.color===c?`2.5px solid ${T.text}`:'2.5px solid transparent',outlineOffset:2}}/>)}
+              </div>
+            </div>
+            <div style={{marginBottom:22}}>
+              <div style={{fontSize:12,color:T.sub,marginBottom:4,fontFamily:'sans-serif'}}>备注（选填）</div>
+              <input placeholder="例：促销价、会员价…" value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} style={inp}/>
+            </div>
+            <button onClick={submit} style={{width:'100%',padding:'15px',background:T.primary,color:'#fff',border:'none',borderRadius:11,fontSize:15,fontWeight:700,cursor:'pointer',fontFamily:'sans-serif',letterSpacing:1}}>{editId?'保存修改':'确认添加'}</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
