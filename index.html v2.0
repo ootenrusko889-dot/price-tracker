@@ -3,81 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>比价程序</title>
+    <title>比价程序-同步版</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            --bg: #F5EFE6;
-            --nav: #241408;
-            --accent: #7A4F2D;
-            --text: #2E1A0A;
-            --sub: #907060;
-            --border: #E2D0BC;
-            --white: #FFFCF8;
+            --bg: #F5EFE6; --nav: #241408; --accent: #7A4F2D;
+            --text: #2E1A0A; --sub: #907060; --border: #E2D0BC; --white: #FFFCF8;
         }
-
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { 
             margin: 0; background: var(--bg); color: var(--text); 
-            font-family: "PingFang SC", "Hiragino Sans GB", serif; 
-            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+            font-family: -apple-system, sans-serif; 
+            display: flex; flex-direction: column; height: 100vh;
         }
 
-        /* 顶部导航 */
-        header { background: var(--nav); padding: 40px 20px 20px; color: white; }
+        /* 顶部 - 增加安全区域适配 */
+        header { background: var(--nav); padding: 50px 20px 20px; color: white; flex-shrink: 0; }
         .nav-sub { font-size: 10px; letter-spacing: 2px; color: #C49A6C; }
         .nav-main-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 5px; }
         .nav-title { font-size: 24px; font-weight: bold; }
-        .nav-stats { text-align: right; }
         .nav-stats b { font-size: 20px; color: #C49A6C; }
-        .nav-stats span { font-size: 10px; color: #999; margin-left: 4px; }
 
-        /* 搜索框 */
-        .search-area { background: var(--nav); padding: 0 20px 20px; }
-        .search-bar { background: white; border-radius: 6px; display: flex; align-items: center; padding: 8px 12px; }
-        .search-bar input { border: none; outline: none; flex: 1; font-size: 14px; margin-left: 8px; }
+        /* 列表区 - 保证滚动顺畅 */
+        main { flex: 1; overflow-y: auto; padding: 15px; -webkit-overflow-scrolling: touch; }
+        .group-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; }
+        .group-header { padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .group-title { font-size: 16px; font-weight: bold; }
 
-        /* 列表区 */
-        main { flex: 1; overflow-y: auto; padding: 15px; }
-        .group-card { background: var(--white); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 15px; overflow: hidden; }
-        .group-header { padding: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .group-title { font-size: 17px; font-weight: bold; }
-        .tag-cat { font-size: 11px; color: var(--sub); border: 1px solid var(--border); padding: 1px 6px; border-radius: 3px; margin-left: 10px; font-weight: normal; }
-        .arrow { width: 8px; height: 8px; border-right: 2px solid var(--border); border-bottom: 2px solid var(--border); transform: rotate(45deg); transition: 0.3s; }
-        .arrow.up { transform: rotate(-135deg); }
-
-        /* 明细列表 (对标网页版结构) */
+        /* 明细项 - 手机端紧凑排版 */
         .sub-list { background: #fff; border-top: 1px solid #f0e6da; }
-        .sub-item { padding: 15px; display: flex; border-bottom: 1px solid #f0e6da; }
-        .dot { width: 8px; height: 8px; background: #4A7A50; border-radius: 50%; margin: 6px 12px 0 0; flex-shrink: 0; }
+        .sub-item { padding: 12px 15px; display: flex; border-bottom: 1px solid #f0e6da; }
+        .dot { width: 8px; height: 8px; background: #4A7A50; border-radius: 50%; margin: 6px 10px 0 0; }
         .sub-content { flex: 1; }
-        
-        .row-top { display: flex; justify-content: space-between; }
-        .channel-name { font-size: 15px; font-weight: bold; }
-        .price-val { font-size: 18px; font-weight: bold; }
-        .price-unit { font-size: 10px; color: var(--sub); margin-left: 2px; }
-
+        .row-top { display: flex; justify-content: space-between; font-weight: bold; }
+        .price-val { color: var(--text); }
         .row-mid { font-size: 12px; color: var(--sub); margin: 4px 0; }
-        .row-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; font-size: 12px; }
-        .detail-txt { color: var(--sub); }
-        .actions { color: var(--accent); text-decoration: underline; cursor: pointer; }
-        .del { color: #C06840; margin-left: 15px; }
+        .row-bottom { display: flex; justify-content: space-between; font-size: 12px; color: var(--sub); margin-top: 4px; }
+        .del-btn { color: #C06840; text-decoration: underline; padding: 5px; }
 
-        /* 浮动表单 (新增) */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+        /* 弹窗表单 - 手机全屏优化 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
         .modal.active { display: flex; }
-        .form-card { background: var(--white); width: 90%; max-width: 400px; padding: 20px; border-radius: 8px; border: 1px solid var(--border); }
-        .form-title { font-size: 16px; font-weight: bold; margin-bottom: 15px; border-left: 4px solid var(--accent); padding-left: 10px; }
-        input { width: 100%; background: var(--bg); border: 1px solid var(--border); padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 14px; outline: none; }
-        .row { display: flex; gap: 10px; }
-        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
-        button { flex: 1; padding: 12px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; }
-        .btn-save { background: var(--accent); color: white; }
-        .btn-cancel { background: #eee; color: #666; }
-
-        /* 底部固定按钮 */
-        footer { padding: 20px; background: var(--bg); }
-        .add-main-btn { background: var(--accent); color: white; width: 100%; padding: 15px; border-radius: 6px; font-weight: bold; font-size: 16px; border: none; box-shadow: 0 4px 10px rgba(122,79,45,0.2); }
+        .form-card { background: var(--white); width: 92%; padding: 20px; border-radius: 12px; }
+        input { width: 100%; background: var(--bg); border: 1px solid var(--border); padding: 12px; border-radius: 6px; margin-bottom: 10px; font-size: 16px; -webkit-appearance: none; }
+        
+        /* 底部按钮 */
+        footer { padding: 15px 20px 30px; background: var(--bg); border-top: 1px solid var(--border); }
+        .add-btn { background: var(--accent); color: white; width: 100%; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; border: none; }
     </style>
 </head>
 <body>
@@ -86,179 +58,109 @@
     <div class="nav-sub">PRICE CHECKER</div>
     <div class="nav-main-row">
         <div class="nav-title">比价程序</div>
-        <div class="nav-stats"><b id="totalCount">0</b><span>条记录</span></div>
+        <div class="nav-stats"><b id="totalCount">0</b>条</div>
     </div>
 </header>
 
-<div class="search-area">
-    <div class="search-bar">
-        <span>🔍</span>
-        <input type="text" placeholder="输入名称搜索" id="searchInput">
-    </div>
-</div>
-
-<main id="recordList">
-    </main>
+<main id="recordList"></main>
 
 <footer>
-    <button class="add-main-btn" onclick="openModal()">＋ 新增购买记录</button>
+    <button class="add-btn" onclick="openModal()">＋ 新增购买记录</button>
 </footer>
 
 <div class="modal" id="formModal">
     <div class="form-card">
-        <div class="form-title">记录详细信息</div>
-        <input type="text" id="f-name" placeholder="商品名称 (如: 桶装水)">
-        <div class="row">
-            <input type="text" id="f-cat" placeholder="分类 (食品/日用)">
-            <input type="text" id="f-channel" placeholder="渠道/平台">
+        <div style="font-weight:bold; margin-bottom:15px;">新增记录</div>
+        <input type="text" id="f-name" placeholder="商品名称">
+        <input type="text" id="f-brand" placeholder="品牌">
+        <input type="text" id="f-specs" placeholder="规格 (如 5L)">
+        <div style="display:flex; gap:10px;">
+            <input type="number" id="f-totalPrice" placeholder="总价">
+            <input type="number" id="f-qty" placeholder="件数" value="1">
         </div>
-        <div class="row">
-            <input type="text" id="f-brand" placeholder="品牌">
-            <input type="text" id="f-specs" placeholder="规格 (如: 5L)">
-        </div>
-        <div class="row">
-            <input type="number" id="f-totalPrice" placeholder="总金额 (元)">
-            <input type="number" id="f-qty" placeholder="购买件数" value="1">
-        </div>
-        <div style="font-size: 12px; color: var(--sub); margin-bottom: 10px;">
-            注：单价将自动根据 [总金额/件数] 计算。
-        </div>
-        <div class="btn-group">
-            <button class="btn-cancel" onclick="closeModal()">取消</button>
-            <button class="btn-save" onclick="handleSave()">保存并同步</button>
+        <input type="text" id="f-channel" placeholder="渠道/平台">
+        <div style="display:flex; gap:10px; margin-top:10px;">
+            <button style="flex:1; background:#eee; padding:12px; border-radius:6px; border:none;" onclick="closeModal()">取消</button>
+            <button style="flex:1; background:var(--accent); color:white; padding:12px; border-radius:6px; border:none;" onclick="handleSave()">同步保存</button>
         </div>
     </div>
 </div>
 
 <script>
-    // --- 1. 配置云端通行证 ---
+    // --- 配置云端 ---
     const SUPABASE_URL = 'https://csktstukwmuitvsjjzwd.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza3RzdHVrd211aXR2c2pqendkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NTcwNzYsImV4cCI6MjA5MDQzMzA3Nn0.fc-7q3Xmr1MtZR_NdiIxQ4f3QtbtLn_T1smJM8_INlE';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const GROUP_ID = 'family_share_2026';
 
-    const GROUP_ID = 'my_family_share'; // 共享暗号
-    let expandedGroups = {}; // 记录展开状态
+    let expandedGroups = {};
 
-    // --- 2. 页面初始化 ---
-    document.addEventListener('DOMContentLoaded', () => {
-        fetchRecords();
-        // 开启实时同步
-        _supabase.channel('any').on('postgres_changes', { event: '*', table: 'records' }, fetchRecords).subscribe();
-    });
-
-    // --- 3. 拉取与渲染 ---
     async function fetchRecords() {
-        let { data: records, error } = await _supabase
-            .from('records')
-            .select('*')
-            .eq('group_id', GROUP_ID)
-            .order('created_at', { ascending: false });
-
-        if (error) return console.error(error);
-
-        document.getElementById('totalCount').innerText = records.length;
-
-        // 分组处理
+        const { data, error } = await _supabase.from('records').select('*').eq('group_id', GROUP_ID).order('created_at', { ascending: false });
+        if (error) return;
+        
+        document.getElementById('totalCount').innerText = data.length;
         const groups = {};
-        records.forEach(item => {
-            if (!groups[item.name]) groups[item.name] = { name: item.name, cat: item.cat, list: [] };
+        data.forEach(item => {
+            if (!groups[item.name]) groups[item.name] = { name: item.name, list: [] };
             groups[item.name].list.push(item);
         });
-
-        renderUI(Object.values(groups));
+        render(Object.values(groups));
     }
 
-    function renderUI(groups) {
-        const listEl = document.getElementById('recordList');
-        listEl.innerHTML = '';
-
-        groups.forEach(group => {
-            const isExpanded = expandedGroups[group.name];
-            const groupEl = document.createElement('div');
-            groupEl.className = 'group-card';
-            
-            groupEl.innerHTML = `
-                <div class="group-header" onclick="toggleGroup('${group.name}')">
-                    <div class="group-info">
-                        <span class="group-title">${group.name}</span>
-                        <span class="tag-cat">${group.cat}</span>
-                    </div>
-                    <div class="arrow ${isExpanded ? 'up' : ''}"></div>
+    function render(groups) {
+        const container = document.getElementById('recordList');
+        container.innerHTML = groups.length ? '' : '<div style="text-align:center; color:#999; margin-top:40px;">云端暂无数据</div>';
+        
+        groups.forEach(g => {
+            const isExp = expandedGroups[g.name];
+            const div = document.createElement('div');
+            div.className = 'group-card';
+            div.innerHTML = `
+                <div class="group-header" onclick="toggle('${g.name}')">
+                    <span class="group-title">${g.name}</span>
+                    <span style="font-size:12px; color:#ccc;">${isExp ? '▲' : '▼'}</span>
                 </div>
-                ${isExpanded ? `
-                    <div class="sub-list">
-                        ${group.list.map(item => `
-                            <div class="sub-item">
-                                <div class="dot"></div>
-                                <div class="sub-content">
-                                    <div class="row-top">
-                                        <span class="channel-name">${item.channel}</span>
-                                        <div class="price-box">
-                                            <span class="price-num">¥${item.unit_price}</span>
-                                            <span class="price-unit">元/${item.unit_label || '件'}</span>
-                                        </div>
-                                    </div>
-                                    <div class="row-mid">品牌:${item.brand || '-'} 规格:${item.specs || '-'}</div>
-                                    <div class="row-bottom">
-                                        <span class="detail-txt">${item.qty}件 · 共¥${item.total_price}</span>
-                                        <div>
-                                            <span class="actions del" onclick="handleDelete(${item.id})">删除</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : ''}
-            `;
-            listEl.appendChild(groupEl);
+                ${isExp ? `<div class="sub-list">${g.list.map(i => `
+                    <div class="sub-item">
+                        <div class="dot"></div>
+                        <div class="sub-content">
+                            <div class="row-top"><span>${i.channel}</span><span class="price-val">¥${i.unit_price}<small style="font-size:10px;font-weight:normal">/${i.unit_label}</small></span></div>
+                            <div class="row-mid">品牌:${i.brand || '-'} | 规格:${i.specs || '-'}</div>
+                            <div class="row-bottom"><span>${i.qty}件 · 共¥${i.total_price}</span><span class="del-btn" onclick="del(${i.id})">删除</span></div>
+                        </div>
+                    </div>`).join('')}</div>` : ''}`;
+            container.appendChild(div);
         });
     }
 
-    function toggleGroup(name) {
-        expandedGroups[name] = !expandedGroups[name];
-        fetchRecords();
-    }
-
-    // --- 4. 交互功能 ---
+    function toggle(n) { expandedGroups[n] = !expandedGroups[n]; fetchRecords(); }
     function openModal() { document.getElementById('formModal').classList.add('active'); }
     function closeModal() { document.getElementById('formModal').classList.remove('active'); }
 
     async function handleSave() {
         const name = document.getElementById('f-name').value;
-        const totalPrice = parseFloat(document.getElementById('f-totalPrice').value);
-        const qty = parseInt(document.getElementById('f-qty').value);
+        const price = parseFloat(document.getElementById('f-totalPrice').value);
+        const qty = parseInt(document.getElementById('f-qty').value) || 1;
+        if (!name || isNaN(price)) return alert('请填写名称和价格');
 
-        if (!name || isNaN(totalPrice)) return alert('名称和价格必填');
-
-        const unitPrice = (totalPrice / qty).toFixed(2);
-
-        const record = {
-            name,
-            cat: document.getElementById('f-cat').value || '其他',
-            channel: document.getElementById('f-channel').value || '未记录',
-            brand: document.getElementById('f-brand').value,
+        const { error } = await _supabase.from('records').insert([{
+            name, brand: document.getElementById('f-brand').value,
             specs: document.getElementById('f-specs').value,
-            total_price: totalPrice,
-            unit_price: parseFloat(unitPrice),
-            unit_label: '件', 
+            total_price: price, unit_price: parseFloat((price/qty).toFixed(2)),
+            unit_label: '件', channel: document.getElementById('f-channel').value,
             group_id: GROUP_ID
-        };
+        }]);
 
-        const { error } = await _supabase.from('records').insert([record]);
         if (error) alert('保存失败');
-        else {
-            closeModal();
-            // 重置表单
-            document.querySelectorAll('.modal input').forEach(i => i.value = (i.id==='f-qty'?'1':''));
-        }
+        else { closeModal(); resetForm(); fetchRecords(); }
     }
 
-    async function handleDelete(id) {
-        if (!confirm('确认删除吗？')) return;
-        await _supabase.from('records').delete().eq('id', id);
-    }
+    async function del(id) { if(confirm('确认删除？')) { await _supabase.from('records').delete().eq('id', id); fetchRecords(); } }
+    function resetForm() { document.querySelectorAll('input').forEach(i => i.value = (i.id==='f-qty'?'1':'')); }
+
+    document.addEventListener('DOMContentLoaded', fetchRecords);
+    _supabase.channel('any').on('postgres_changes', { event: '*', table: 'records' }, fetchRecords).subscribe();
 </script>
-
 </body>
 </html>
