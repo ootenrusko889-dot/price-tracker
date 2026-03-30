@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>比价程序 - 云同步版 v2.9.3</title>
+    <title>比价程序 - 云同步版 v2.9.4</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pinyin-pro"></script>
@@ -40,8 +40,7 @@
 
         .group-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         
-        /* 恢复适中优雅的一级类目 */
-        .group-header { padding: 12px 14px; background: #faf4ed; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .group-header { padding: 14px 15px; background: #faf4ed; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .group-title { font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 6px; color: var(--text); }
         .cat-tag { font-size: 10px; background: #e8e0d5; color: var(--accent); padding: 1px 4px; border-radius: 3px; font-weight: normal; }
         .group-stats { font-size: 11px; color: var(--sub); display: flex; gap: 6px; align-items: center; }
@@ -52,24 +51,25 @@
         .item-list { transition: all 0.3s ease-in-out; }
         .item-list.hidden { display: none; }
         
-        /* 【核心调整：两行排版设计】 */
+        /* 完美的双行排版 */
         .item-row { padding: 10px 12px; border-bottom: 1px dashed #eee; display: flex; flex-direction: column; gap: 6px; }
         .item-row:last-child { border-bottom: none; }
         .item-row.is-starred { background: #fffcf2; } 
         
         .row-line { display: flex; justify-content: space-between; align-items: center; width: 100%; }
         
-        /* 第一行元素 */
-        .channel-name { font-weight: bold; font-size: 14px; display: flex; align-items: center; gap: 2px; color: #33261D; flex-shrink: 0; }
+        .channel-name { font-weight: bold; font-size: 14px; display: flex; align-items: center; gap: 4px; color: #33261D; }
         .star-icon { color: #ccc; font-size: 16px; cursor: pointer; user-select: none; margin-right: 2px; }
         .star-icon.active { color: var(--star); }
-        .item-details { flex: 1; min-width: 0; font-size: 11px; color: #8A7A6D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 8px; }
         .unit-price { font-size: 15px; font-weight: bold; color: var(--accent); flex-shrink: 0; }
         
-        /* 第二行元素 */
-        .sub-text { font-size: 11px; color: #A08D80; flex-shrink: 0; }
-        .remark-text { font-size: 10px; color: #a88a78; background: #fdfaf7; padding: 2px 5px; border-radius: 3px; border: 1px solid #f0e6da; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; margin-left: 6px; }
-        .edit-btn { color: #6E8572; font-size: 11px; padding: 3px 10px; background: transparent; border: 1px solid #C5D1C7; border-radius: 4px; cursor: pointer; flex-shrink: 0; margin-left: auto; }
+        .sub-text { font-size: 12px; color: #6E5C4F; } /* 品牌型号规格的颜色加深一点 */
+        .total-info { font-size: 11px; color: #B0A398; margin-left: 6px; flex-shrink: 0; } /* 次要信息颜色调浅 */
+        .remark-text { font-size: 10px; color: #a88a78; background: #fdfaf7; padding: 2px 4px; border-radius: 3px; display: inline-block; border: 1px solid #f0e6da; margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* 保证左侧文字过长时自动打点，不把右侧按钮挤出屏幕 */
+        .details-container { flex: 1; min-width: 0; display: flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .edit-btn { color: #6E8572; font-size: 11px; padding: 3px 10px; background: transparent; border: 1px solid #C5D1C7; border-radius: 4px; cursor: pointer; flex-shrink: 0; margin-left: 10px; }
 
         footer { padding: 10px 15px 20px; background: var(--bg); border-top: 1px solid var(--border); flex-shrink: 0; }
         .add-btn { background: var(--accent); color: white; width: 100%; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; border: none; cursor: pointer;}
@@ -272,10 +272,11 @@
                     
                 items.forEach(item => {
                     const starActive = item.is_starred ? 'active' : '';
+                    const brandStr = item.brand ? `${item.brand} | ` : '';
+                    const modelStr = item.model ? `${item.model} | ` : '';
                     const remarkHtml = item.remark ? `<span class="remark-text">📝 ${item.remark}</span>` : '';
-                    const modelStr = item.model ? ` · ${item.model}` : '';
                     
-                    // 【全新：极致两行排版】
+                    // 【全新两行排版设计，次要信息被极致压缩】
                     html += `
                         <div class="item-row ${item.is_starred ? 'is-starred' : ''}">
                             <div class="row-line">
@@ -283,17 +284,14 @@
                                     <span class="star-icon ${starActive}" onclick="toggleStar(${item.id}, ${item.is_starred}); event.stopPropagation();">★</span>
                                     ${item.channel || '未知'}
                                 </div>
-                                <div class="item-details">
-                                    ${item.brand || '-'}${modelStr} | ${item.specs || '-'}
-                                </div>
                                 <div class="unit-price">
                                     ¥${item.unit_price} <span style="font-size:11px; color:#999; font-weight:normal;">/${item.unit_label || '件'}</span>
                                 </div>
                             </div>
-                            
-                            <div class="row-line">
-                                <div style="display:flex; align-items:center; min-width:0; flex:1;">
-                                    <span class="sub-text">总¥${item.total_price} (${item.qty || 1}${item.package_unit || '件'})</span>
+                            <div class="row-line" style="margin-top:2px;">
+                                <div class="details-container">
+                                    <span class="sub-text">${brandStr}${modelStr}${item.specs || '-'}</span>
+                                    <span class="total-info">(总¥${item.total_price}/${item.qty || 1}${item.package_unit || '件'})</span>
                                     ${remarkHtml}
                                 </div>
                                 <button class="edit-btn" onclick="openEdit(${item.id})">编辑</button>
