@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>比价程序 - 云同步版 v2.9.2</title>
+    <title>比价程序 - 云同步版 v2.9.3</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pinyin-pro"></script>
@@ -32,20 +32,19 @@
         .alpha-sidebar {
             position: fixed; left: 0; top: 50%; transform: translateY(-50%);
             display: flex; flex-direction: column; font-size: 10px; text-align: center;
-            z-index: 50; width: 24px; font-weight: bold;
-            background: rgba(245, 239, 230, 0.85);
+            z-index: 50; width: 24px; font-weight: bold; background: rgba(245, 239, 230, 0.85);
             padding: 10px 0; border-radius: 0 10px 10px 0;
         }
         .alpha-sidebar span { padding: 3px 0; color: #907060; cursor: pointer; user-select: none; }
         .alpha-sidebar span:active { color: var(--accent); transform: scale(1.2); }
 
-        .group-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+        .group-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         
-        /* 【核心调整区 1】：加宽加大一级分类 */
-        .group-header { padding: 14px 15px; background: #f2e7da; border-bottom: 2px solid #dfcbb5; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .group-title { font-weight: bold; font-size: 17px; display: flex; align-items: center; gap: 6px; color: #1a0f08; } /* 字体变大变深 */
-        .cat-tag { font-size: 11px; background: rgba(122, 79, 45, 0.1); color: var(--accent); padding: 2px 5px; border-radius: 4px; font-weight: normal; }
-        .group-stats { font-size: 12px; color: var(--sub); display: flex; gap: 8px; align-items: center; } /* 数据字号变大 */
+        /* 恢复适中优雅的一级类目 */
+        .group-header { padding: 12px 14px; background: #faf4ed; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .group-title { font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 6px; color: var(--text); }
+        .cat-tag { font-size: 10px; background: #e8e0d5; color: var(--accent); padding: 1px 4px; border-radius: 3px; font-weight: normal; }
+        .group-stats { font-size: 11px; color: var(--sub); display: flex; gap: 6px; align-items: center; }
         .stats-highlight { color: #C06840; font-weight: bold; }
         .arrow { font-size: 10px; color: #999; transition: transform 0.3s; margin-left: 4px; }
         .arrow.collapsed { transform: rotate(-90deg); }
@@ -53,19 +52,24 @@
         .item-list { transition: all 0.3s ease-in-out; }
         .item-list.hidden { display: none; }
         
-        /* 【核心调整区 2】：收敛压缩二级分类 */
-        .item-row { padding: 10px 15px; border-bottom: 1px dashed #eee; display: flex; flex-direction: column; gap: 4px; }
+        /* 【核心调整：两行排版设计】 */
+        .item-row { padding: 10px 12px; border-bottom: 1px dashed #eee; display: flex; flex-direction: column; gap: 6px; }
         .item-row:last-child { border-bottom: none; }
         .item-row.is-starred { background: #fffcf2; } 
         
-        .row-line { display: flex; justify-content: space-between; align-items: center; }
-        .channel-name { font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 4px; color: #4a3a2a; } /* 字号调小，颜色微灰 */
-        .star-icon { color: #ccc; font-size: 16px; cursor: pointer; user-select: none; }
+        .row-line { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        
+        /* 第一行元素 */
+        .channel-name { font-weight: bold; font-size: 14px; display: flex; align-items: center; gap: 2px; color: #33261D; flex-shrink: 0; }
+        .star-icon { color: #ccc; font-size: 16px; cursor: pointer; user-select: none; margin-right: 2px; }
         .star-icon.active { color: var(--star); }
-        .unit-price { font-size: 14px; font-weight: bold; color: var(--accent); } /* 字号稍减 */
-        .sub-text { font-size: 11px; color: #a08878; } /* 次要信息颜色调浅 */
-        .remark-text { font-size: 10px; color: #a88a78; background: #fdfaf7; padding: 2px 4px; border-radius: 3px; display: inline-block; border: 1px solid #f0e6da; }
-        .edit-btn { color: #728c76; font-size: 11px; padding: 2px 8px; background: transparent; border: 1px solid #c8d6cb; border-radius: 4px; cursor: pointer; } /* 弱化编辑按钮 */
+        .item-details { flex: 1; min-width: 0; font-size: 11px; color: #8A7A6D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 8px; }
+        .unit-price { font-size: 15px; font-weight: bold; color: var(--accent); flex-shrink: 0; }
+        
+        /* 第二行元素 */
+        .sub-text { font-size: 11px; color: #A08D80; flex-shrink: 0; }
+        .remark-text { font-size: 10px; color: #a88a78; background: #fdfaf7; padding: 2px 5px; border-radius: 3px; border: 1px solid #f0e6da; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; margin-left: 6px; }
+        .edit-btn { color: #6E8572; font-size: 11px; padding: 3px 10px; background: transparent; border: 1px solid #C5D1C7; border-radius: 4px; cursor: pointer; flex-shrink: 0; margin-left: auto; }
 
         footer { padding: 10px 15px 20px; background: var(--bg); border-top: 1px solid var(--border); flex-shrink: 0; }
         .add-btn { background: var(--accent); color: white; width: 100%; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; border: none; cursor: pointer;}
@@ -90,13 +94,10 @@
 </header>
 
 <div class="filter-bar" id="filterBar"></div>
-
 <div class="search-bar">
     <input type="text" id="searchInput" placeholder="🔍 搜索 (支持拼音首字母)" oninput="applyFilterAndRender()">
 </div>
-
 <div class="alpha-sidebar" id="alphaSidebar"></div>
-
 <main id="recordList"></main>
 
 <footer>
@@ -136,7 +137,6 @@
         
         <input type="text" id="f-channel" placeholder="购买渠道" list="channel-list">
         <datalist id="channel-list"></datalist>
-
         <input type="text" id="f-remark" placeholder="备注 (选填)" style="background:#fffcf2;">
         
         <div class="btn-group">
@@ -189,7 +189,6 @@
 
     function applyFilterAndRender() {
         const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
-        
         let filteredData = allRecords;
         if (currentCategoryFilter !== '全部') filteredData = filteredData.filter(r => r.category === currentCategoryFilter);
         if (keyword) {
@@ -273,23 +272,27 @@
                     
                 items.forEach(item => {
                     const starActive = item.is_starred ? 'active' : '';
-                    const remarkHtml = item.remark ? `<div class="remark-text">📝 ${item.remark}</div>` : '';
-                    const modelStr = item.model ? `型号: ${item.model} ` : '';
+                    const remarkHtml = item.remark ? `<span class="remark-text">📝 ${item.remark}</span>` : '';
+                    const modelStr = item.model ? ` · ${item.model}` : '';
                     
+                    // 【全新：极致两行排版】
                     html += `
                         <div class="item-row ${item.is_starred ? 'is-starred' : ''}">
                             <div class="row-line">
                                 <div class="channel-name">
                                     <span class="star-icon ${starActive}" onclick="toggleStar(${item.id}, ${item.is_starred}); event.stopPropagation();">★</span>
-                                    ${item.channel || '未知渠道'}
+                                    ${item.channel || '未知'}
                                 </div>
-                                <div class="unit-price">¥${item.unit_price} <span style="font-size:11px; color:#999; font-weight:normal;">/${item.unit_label || '件'}</span></div>
+                                <div class="item-details">
+                                    ${item.brand || '-'}${modelStr} | ${item.specs || '-'}
+                                </div>
+                                <div class="unit-price">
+                                    ¥${item.unit_price} <span style="font-size:11px; color:#999; font-weight:normal;">/${item.unit_label || '件'}</span>
+                                </div>
                             </div>
-                            <div class="row-line" style="margin-top:2px;">
-                                <div class="sub-text">品牌: ${item.brand || '-'} | ${modelStr}| 规格: ${item.specs || '-'}</div>
-                            </div>
-                            <div class="row-line" style="margin-top:4px;">
-                                <div style="display:flex; align-items:center; gap:6px;">
+                            
+                            <div class="row-line">
+                                <div style="display:flex; align-items:center; min-width:0; flex:1;">
                                     <span class="sub-text">总¥${item.total_price} (${item.qty || 1}${item.package_unit || '件'})</span>
                                     ${remarkHtml}
                                 </div>
