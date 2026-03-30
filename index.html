@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>比价程序 - 云同步版 v7.0</title>
+    <title>比价程序 - 云同步版 v2.8</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/pinyin-pro"></script>
     
     <style>
         :root { --bg: #F5EFE6; --nav: #241408; --accent: #7A4F2D; --text: #2E1A0A; --sub: #907060; --border: #E2D0BC; --white: #FFFCF8; --star: #F5A623; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; height: 100vh; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
         header { background: var(--nav); padding: 40px 20px 15px; color: white; flex-shrink: 0; }
         .nav-title { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
@@ -18,34 +19,43 @@
         .status-dot.online { background: #4caf50; }
         .status-text { font-size: 12px; color: #aaa; }
 
-        /* 新增：分类筛选栏 */
+        /* 大类筛选栏 */
         .filter-bar { 
             display: flex; gap: 10px; padding: 12px 15px; background: var(--white); 
             border-bottom: 1px solid var(--border); overflow-x: auto; white-space: nowrap;
-            /* 隐藏滚动条但保留滑动功能 */
             -ms-overflow-style: none; scrollbar-width: none; flex-shrink: 0;
         }
         .filter-bar::-webkit-scrollbar { display: none; }
-        .filter-tag {
-            padding: 6px 14px; border-radius: 20px; font-size: 13px; color: var(--sub);
-            border: 1px solid var(--border); cursor: pointer; transition: 0.2s; user-select: none;
-        }
-        .filter-tag.active {
-            background: var(--accent); color: white; border-color: var(--accent); font-weight: bold;
-        }
+        .filter-tag { padding: 6px 14px; border-radius: 20px; font-size: 13px; color: var(--sub); border: 1px solid var(--border); cursor: pointer; transition: 0.2s; user-select: none; }
+        .filter-tag.active { background: var(--accent); color: white; border-color: var(--accent); font-weight: bold; }
 
-        main { flex: 1; overflow-y: auto; padding: 15px; }
-        .group-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        /* 全局搜索框 */
+        .search-bar { padding: 10px 15px; background: var(--bg); flex-shrink: 0; }
+        .search-bar input { width: 100%; border-radius: 20px; padding: 8px 15px; border: 1px solid var(--border); background: var(--white); outline: none; font-size: 14px; }
+
+        /* 主列表区域 */
+        main { flex: 1; overflow-y: auto; padding: 0 25px 15px 15px; position: relative; } /* 右侧留白给导航栏 */
         
+        /* A-Z 分隔字母 */
+        .letter-divider { font-size: 18px; font-weight: bold; color: var(--accent); margin: 15px 0 10px 5px; padding-bottom: 5px; border-bottom: 2px solid #E2D0BC; }
+
+        /* 右侧 A-Z 悬浮导航栏 */
+        .alpha-sidebar {
+            position: fixed; right: 2px; top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column; font-size: 10px; text-align: center;
+            z-index: 50; width: 20px; font-weight: bold;
+        }
+        .alpha-sidebar span { padding: 2px 0; color: #907060; cursor: pointer; user-select: none; }
+        .alpha-sidebar span:active { color: var(--accent); transform: scale(1.2); }
+
+        .group-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
         .group-header { padding: 15px; background: #faf4ed; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .group-title-area { display: flex; flex-direction: column; }
         .group-title { font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 8px; }
         .cat-tag { font-size: 11px; background: #e8e0d5; color: var(--accent); padding: 2px 6px; border-radius: 4px; font-weight: normal; }
         .group-stats { font-size: 11px; color: var(--sub); margin-top: 4px; display: flex; gap: 10px; }
         .stats-highlight { color: #C06840; font-weight: bold; }
-        .arrow { font-size: 12px; color: #999; transition: transform 0.3s; }
-        .arrow.collapsed { transform: rotate(-90deg); }
-
+        
         .item-list { transition: all 0.3s ease-in-out; }
         .item-list.hidden { display: none; }
         .item-row { padding: 12px 15px; border-bottom: 1px dashed #eee; display: flex; justify-content: space-between; align-items: center; }
@@ -65,14 +75,14 @@
         .action-btns { display: flex; gap: 6px; margin-top: 8px; justify-content: flex-end; }
         .edit-btn { color: #4A7A50; font-size: 12px; padding: 4px 12px; background: #e8f0e9; border-radius: 4px; border: none; cursor: pointer; }
 
-        footer { padding: 15px 20px 30px; background: var(--bg); border-top: 1px solid var(--border); }
+        footer { padding: 15px 20px 30px; background: var(--bg); border-top: 1px solid var(--border); flex-shrink: 0; }
         .add-btn { background: var(--accent); color: white; width: 100%; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; border: none; cursor: pointer;}
         
+        /* 弹窗样式 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
         .modal.active { display: flex; }
         .form-card { background: var(--white); width: 92%; max-width: 400px; padding: 20px; border-radius: 12px; max-height: 90vh; overflow-y: auto;}
         input, select { width: 100%; background: var(--bg); border: 1px solid var(--border); padding: 12px; border-radius: 6px; margin-bottom: 10px; font-size: 15px; outline: none; }
-        
         .btn-group { display: flex; gap: 10px; margin-top: 10px; }
         .btn-group button { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; font-size: 15px; cursor: pointer; }
         .btn-del-record { background: #fff1f0; color: #d9363e; margin-top: 15px; width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #ffccc7; font-weight: bold; display: none; cursor: pointer;}
@@ -89,6 +99,12 @@
 </header>
 
 <div class="filter-bar" id="filterBar"></div>
+
+<div class="search-bar">
+    <input type="text" id="searchInput" placeholder="🔍 搜索商品、品牌或型号..." oninput="applyFilterAndRender()">
+</div>
+
+<div class="alpha-sidebar" id="alphaSidebar"></div>
 
 <main id="recordList"></main>
 
@@ -117,25 +133,25 @@
         </div>
         
         <div style="display:flex; gap:10px; margin-bottom:10px;">
-            <input type="number" id="f-specNum" placeholder="单件容量/重量" style="flex:2; margin-bottom:0;">
+            <input type="number" id="f-specNum" placeholder="容量/重量" style="flex:2; margin-bottom:0;">
             <select id="f-specUnit" style="flex:1; margin-bottom:0;">
-                <option value="L">L (升)</option>
-                <option value="ml">ml (毫升)</option>
-                <option value="kg">kg (千克)</option>
-                <option value="g">g (克)</option>
-                <option value="件">件/个</option>
+                <option value="L">L</option><option value="ml">ml</option>
+                <option value="kg">kg</option><option value="g">g</option>
+                <option value="mm">mm</option><option value="件">件/个</option>
             </select>
         </div>
 
         <div style="display:flex; gap:10px; margin-bottom:10px;">
-            <input type="number" id="f-totalPrice" placeholder="总金额 (元)" style="margin-bottom:0;">
-            <input type="number" id="f-qty" placeholder="购买件数" value="1" style="margin-bottom:0;">
+            <input type="number" id="f-totalPrice" placeholder="总金额" style="flex:2; margin-bottom:0;">
+            <input type="number" id="f-qty" placeholder="数量" value="1" style="flex:1; margin-bottom:0;">
+            <input type="text" id="f-packageUnit" placeholder="单位(桶)" value="件" style="flex:1; margin-bottom:0;" list="pkg-list">
+            <datalist id="pkg-list"><option value="件"><option value="桶"><option value="箱"><option value="盒"><option value="提"><option value="包"></datalist>
         </div>
         
         <input type="text" id="f-channel" placeholder="购买渠道 (如: 闪购)" list="channel-list">
         <datalist id="channel-list"></datalist>
 
-        <input type="text" id="f-remark" placeholder="备注 (选填,如: 满2件起送)" style="background:#fffcf2;">
+        <input type="text" id="f-remark" placeholder="备注 (选填)" style="background:#fffcf2;">
         
         <div class="btn-group">
             <button style="background:#eee; color:#666;" onclick="closeModal()">取消</button>
@@ -151,11 +167,12 @@
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza3RzdHVrd211aXR2c2pqendkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NTcwNzYsImV4cCI6MjA5MDQzMzA3Nn0.fc-7q3Xmr1MtZR_NdiIxQ4f3QtbtLn_T1smJM8_INlE';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const GROUP_ID = 'my_family_2026';
+    const { pinyin } = pinyinPro; // 初始化拼音库
 
     let allRecords = []; 
     let currentEditId = null; 
     let collapsedGroups = {};
-    let currentCategoryFilter = '全部'; // 新增：当前激活的过滤标签
+    let currentCategoryFilter = '全部'; 
 
     async function fetchRecords() {
         try {
@@ -167,8 +184,6 @@
             document.getElementById('statusText').innerText = `已同步 (共 ${data.length} 条记录)`;
             
             updateNameList(); 
-            
-            // 每次拉取数据后，重绘顶部筛选栏，并应用筛选
             renderFilterBar();
             applyFilterAndRender();
         } catch (err) {
@@ -176,14 +191,10 @@
         }
     }
 
-    // --- 【新功能】渲染顶部筛选横条 ---
     function renderFilterBar() {
         const filterEl = document.getElementById('filterBar');
-        // 提取所有不为空的大类，并去重
         const categories = [...new Set(allRecords.map(r => r.category).filter(c => c))];
-        categories.unshift('全部'); // 把“全部”放在最前面
-
-        // 如果用户以前填的大类被删光了，重置为“全部”
+        categories.unshift('全部'); 
         if (!categories.includes(currentCategoryFilter)) currentCategoryFilter = '全部';
 
         filterEl.innerHTML = categories.map(cat => `
@@ -192,103 +203,166 @@
         `).join('');
     }
 
-    // --- 【新功能】点击标签进行过滤 ---
     function setFilter(catName) {
         currentCategoryFilter = catName;
-        renderFilterBar(); // 更新标签高亮状态
-        applyFilterAndRender(); // 重新渲染下方列表
+        renderFilterBar(); 
+        applyFilterAndRender(); 
     }
 
-    // --- 核心列表渲染（带过滤功能） ---
+    // --- 【重构】过滤、分组、A-Z 排序引擎 ---
     function applyFilterAndRender() {
-        // 根据当前选中的大类，过滤出要显示的数据
-        const filteredData = currentCategoryFilter === '全部' 
-            ? allRecords 
-            : allRecords.filter(r => r.category === currentCategoryFilter);
+        const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+        
+        // 1. 先过滤大类和搜索词
+        let filteredData = allRecords;
+        if (currentCategoryFilter !== '全部') {
+            filteredData = filteredData.filter(r => r.category === currentCategoryFilter);
+        }
+        if (keyword) {
+            filteredData = filteredData.filter(r => 
+                (r.name && r.name.toLowerCase().includes(keyword)) || 
+                (r.brand && r.brand.toLowerCase().includes(keyword)) ||
+                (r.model && r.model.toLowerCase().includes(keyword))
+            );
+        }
 
-        const groups = {};
+        // 2. 将数据按“商品名称”分组
+        const nameGroups = {};
         filteredData.forEach(item => {
-            if (!groups[item.name]) groups[item.name] = [];
-            groups[item.name].push(item);
+            if (!nameGroups[item.name]) nameGroups[item.name] = [];
+            nameGroups[item.name].push(item);
         });
         
-        renderUI(groups);
+        // 3. 将商品名称按 A-Z 首字母归类
+        const alphaMap = {};
+        Object.keys(nameGroups).forEach(name => {
+            let letter = '#';
+            if (name) {
+                // 利用 pinyin-pro 提取首字母
+                const py = pinyin(name[0], { pattern: 'first', toneType: 'none' });
+                if (/^[a-zA-Z]$/.test(py)) letter = py.toUpperCase();
+            }
+            if (!alphaMap[letter]) alphaMap[letter] = [];
+            alphaMap[letter].push({ name, items: nameGroups[name] });
+        });
+
+        // 4. 对提取出的首字母进行 A-Z 排序 (# 排最后)
+        const sortedLetters = Object.keys(alphaMap).sort((a, b) => {
+            if (a === '#') return 1; if (b === '#') return -1;
+            return a.localeCompare(b);
+        });
+
+        renderUI(alphaMap, sortedLetters);
     }
 
-    function renderUI(groups) {
+    function renderUI(alphaMap, sortedLetters) {
         const listEl = document.getElementById('recordList');
-        if (Object.keys(groups).length === 0) {
-            listEl.innerHTML = `<div style="text-align:center; color:#999; margin-top:50px;">当前分类 [${currentCategoryFilter}] 下暂无记录</div>`;
+        const sidebarEl = document.getElementById('alphaSidebar');
+        
+        if (sortedLetters.length === 0) {
+            listEl.innerHTML = `<div style="text-align:center; color:#999; margin-top:50px;">暂无匹配记录</div>`;
+            sidebarEl.innerHTML = '';
             return;
         }
 
         let html = '';
-        for (const [name, items] of Object.entries(groups)) {
-            const minPrice = Math.min(...items.map(i => i.unit_price)).toFixed(2);
-            const avgPrice = (items.reduce((sum, i) => sum + i.unit_price, 0) / items.length).toFixed(2);
-            const unit = items[0].unit_label || '件';
-            
-            // 如果处于“全部”标签下，显示大类小尾巴，否则隐藏（因为上面已经分类了）
-            const categoryTag = (items[0].category && currentCategoryFilter === '全部') 
-                                ? `<span class="cat-tag">${items[0].category}</span>` : '';
-            
-            const isCollapsed = collapsedGroups[name] ? 'collapsed' : '';
-            const listHidden = collapsedGroups[name] ? 'hidden' : '';
+        let sidebarHtml = '';
 
-            html += `
-            <div class="group-card">
-                <div class="group-header" onclick="toggleGroup('${name}')">
-                    <div class="group-title-area">
-                        <div class="group-title">${categoryTag} ${name} <span style="font-size:12px; font-weight:normal; color:#999;">(${items.length}条)</span></div>
-                        <div class="group-stats">
-                            <span>史低: <span class="stats-highlight">¥${minPrice}</span>/${unit}</span>
-                            <span>均价: ¥${avgPrice}/${unit}</span>
-                        </div>
-                    </div>
-                    <div class="arrow ${isCollapsed}">▼</div>
-                </div>
-                
-                <div class="item-list ${listHidden}">`;
-                
-            items.forEach(item => {
-                const starActive = item.is_starred ? 'active' : '';
-                const rowHighlight = item.is_starred ? 'is-starred' : '';
-                const remarkHtml = item.remark ? `<div class="remark-text">📝 ${item.remark}</div>` : '';
-                const modelStr = item.model ? `型号: ${item.model} | ` : '';
-                const displayQty = item.qty || 1;
+        for (const letter of sortedLetters) {
+            // 右侧导航栏字母
+            sidebarHtml += `<span onclick="scrollToLetter('${letter}')">${letter}</span>`;
+            
+            // 列表中的大写字母分隔符 (设置一个ID方便跳转)
+            html += `<div class="letter-divider" id="letter-${letter}">${letter}</div>`;
+            
+            // 字母内的商品按名称的拼音排序
+            const groupsInLetter = alphaMap[letter].sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+
+            for (const group of groupsInLetter) {
+                const name = group.name;
+                const items = group.items;
+
+                // 保持原有的同型号/同品牌排序逻辑 (内聚型排序)
+                items.sort((a, b) => {
+                    const modelA = a.model || ''; const modelB = b.model || '';
+                    if (modelA !== modelB) return modelA.localeCompare(modelB);
+                    const brandA = a.brand || ''; const brandB = b.brand || '';
+                    if (brandA !== brandB) return brandA.localeCompare(brandB);
+                    const specA = parseFloat((a.specs || '0').match(/([0-9.]+)/)?.[1] || 0);
+                    const specB = parseFloat((b.specs || '0').match(/([0-9.]+)/)?.[1] || 0);
+                    return specA - specB;
+                });
+
+                const minPrice = Math.min(...items.map(i => i.unit_price)).toFixed(2);
+                const avgPrice = (items.reduce((sum, i) => sum + i.unit_price, 0) / items.length).toFixed(2);
+                const unit = items[0].unit_label || '件';
+                const categoryTag = (items[0].category && currentCategoryFilter === '全部') ? `<span class="cat-tag">${items[0].category}</span>` : '';
+                const isCollapsed = collapsedGroups[name] ? 'collapsed' : '';
+                const listHidden = collapsedGroups[name] ? 'hidden' : '';
 
                 html += `
-                    <div class="item-row ${rowHighlight}">
-                        <div class="item-main">
-                            <div class="channel-name">
-                                <span class="star-icon ${starActive}" onclick="toggleStar(${item.id}, ${item.is_starred}); event.stopPropagation();">★</span>
-                                ${item.channel || '未知渠道'}
-                            </div>
-                            <div class="sub-text">品牌: ${item.brand || '-'} | ${modelStr}规格: ${item.specs || '-'}</div>
-                            <div class="sub-text">合计 ¥${item.total_price} (买了 ${displayQty}件)</div>
-                            ${remarkHtml}
-                        </div>
-                        <div class="price-box">
-                            <div class="unit-price">¥${item.unit_price} <span style="font-size:12px; color:#999;">/${item.unit_label || '件'}</span></div>
-                            <div class="action-btns">
-                                <button class="edit-btn" onclick="openEdit(${item.id})">编辑详情</button>
+                <div class="group-card">
+                    <div class="group-header" onclick="toggleGroup('${name}')">
+                        <div class="group-title-area">
+                            <div class="group-title">${categoryTag} ${name} <span style="font-size:12px; font-weight:normal; color:#999;">(${items.length})</span></div>
+                            <div class="group-stats">
+                                <span>史低: <span class="stats-highlight">¥${minPrice}</span>/${unit}</span>
+                                <span>均价: ¥${avgPrice}/${unit}</span>
                             </div>
                         </div>
-                    </div>`;
-            });
-            html += `</div></div>`;
+                        <div class="arrow ${isCollapsed}">▼</div>
+                    </div>
+                    <div class="item-list ${listHidden}">`;
+                    
+                items.forEach(item => {
+                    const starActive = item.is_starred ? 'active' : '';
+                    const rowHighlight = item.is_starred ? 'is-starred' : '';
+                    const remarkHtml = item.remark ? `<div class="remark-text">📝 ${item.remark}</div>` : '';
+                    const modelStr = item.model ? `型号: ${item.model} | ` : '';
+                    const displayQty = item.qty || 1;
+                    const pkgUnit = item.package_unit || '件';
+
+                    html += `
+                        <div class="item-row ${rowHighlight}">
+                            <div class="item-main">
+                                <div class="channel-name">
+                                    <span class="star-icon ${starActive}" onclick="toggleStar(${item.id}, ${item.is_starred}); event.stopPropagation();">★</span>
+                                    ${item.channel || '未知渠道'}
+                                </div>
+                                <div class="sub-text">品牌: ${item.brand || '-'} | ${modelStr}规格: ${item.specs || '-'}</div>
+                                <div class="sub-text">合计 ¥${item.total_price} (买 ${displayQty} ${pkgUnit})</div>
+                                ${remarkHtml}
+                            </div>
+                            <div class="price-box">
+                                <div class="unit-price">¥${item.unit_price} <span style="font-size:12px; color:#999;">/${item.unit_label || '件'}</span></div>
+                                <div class="action-btns">
+                                    <button class="edit-btn" onclick="openEdit(${item.id})">编辑详情</button>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+                html += `</div></div>`;
+            }
         }
         listEl.innerHTML = html;
+        sidebarEl.innerHTML = sidebarHtml;
     }
 
-    // --- 其他原有辅助功能保持不变 ---
+    // --- 点击字母跳转功能 ---
+    function scrollToLetter(letter) {
+        const el = document.getElementById(`letter-${letter}`);
+        if (el) {
+            // 平滑滚动到该字母位置
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    // --- 提取自动补全列表 ---
     function updateNameList() {
         const names = [...new Set(allRecords.map(r => r.name).filter(n => n))];
         document.getElementById('name-list').innerHTML = names.map(n => `<option value="${n}">`).join('');
-        
         const channels = [...new Set(allRecords.map(r => r.channel).filter(c => c))];
         document.getElementById('channel-list').innerHTML = channels.map(c => `<option value="${c}">`).join('');
-
         const categories = [...new Set(allRecords.map(r => r.category).filter(c => c))];
         document.getElementById('cat-list').innerHTML = categories.map(c => `<option value="${c}">`).join('');
     }
@@ -297,17 +371,18 @@
         const currentName = document.getElementById('f-name').value.trim();
         const brandList = document.getElementById('brand-list');
         const modelList = document.getElementById('model-list');
-        brandList.innerHTML = '';
-        modelList.innerHTML = '';
+        brandList.innerHTML = ''; modelList.innerHTML = '';
 
         if (!currentName) return;
 
         const brands = new Set();
         const models = new Set();
         
-        const matchRecord = allRecords.find(r => r.name === currentName && r.category);
-        if (matchRecord && !document.getElementById('f-category').value) {
-            document.getElementById('f-category').value = matchRecord.category;
+        const matchRecord = allRecords.find(r => r.name === currentName);
+        if (matchRecord) {
+            if (!document.getElementById('f-category').value) document.getElementById('f-category').value = matchRecord.category || '';
+            if (matchRecord.unit_label) document.getElementById('f-specUnit').value = matchRecord.unit_label;
+            if (matchRecord.package_unit) document.getElementById('f-packageUnit').value = matchRecord.package_unit;
         }
 
         allRecords.forEach(r => {
@@ -323,7 +398,7 @@
 
     function toggleGroup(name) {
         collapsedGroups[name] = !collapsedGroups[name];
-        applyFilterAndRender(); // 折叠时也要带上当前的过滤状态
+        applyFilterAndRender(); 
     }
 
     async function toggleStar(id, currentState) {
@@ -337,9 +412,9 @@
         document.querySelectorAll('.form-card input').forEach(input => input.value = '');
         document.getElementById('f-qty').value = '1';
         document.getElementById('f-specUnit').value = 'L';
+        document.getElementById('f-packageUnit').value = '件'; 
         document.getElementById('btn-delete').style.display = 'none'; 
         
-        // 如果当前在大类筛选下新增，自动把大类填进去，省去选择
         if (currentCategoryFilter !== '全部') {
             document.getElementById('f-category').value = currentCategoryFilter;
         }
@@ -361,6 +436,7 @@
         document.getElementById('f-channel').value = item.channel || '';
         document.getElementById('f-totalPrice').value = item.total_price;
         document.getElementById('f-remark').value = item.remark || '';
+        document.getElementById('f-packageUnit').value = item.package_unit || '件'; 
         
         let specNum = 1;
         let specUnit = item.unit_label || '件';
@@ -387,6 +463,7 @@
         const qty = parseInt(document.getElementById('f-qty').value) || 1;
         const specNum = parseFloat(document.getElementById('f-specNum').value) || 1;
         const specUnit = document.getElementById('f-specUnit').value;
+        const packageUnit = document.getElementById('f-packageUnit').value || '件';
 
         if (!name || isNaN(total)) return alert('【商品名称】和【总价】必须填写哦！');
 
@@ -394,18 +471,11 @@
         const specsStr = `${specNum}${specUnit}`;
 
         const recordData = {
-            category: category, 
-            name: name,
-            brand: document.getElementById('f-brand').value,
-            model: document.getElementById('f-model').value, 
-            specs: specsStr,
-            total_price: total,
-            unit_price: unitPrice,
-            unit_label: specUnit,
-            channel: document.getElementById('f-channel').value,
-            remark: document.getElementById('f-remark').value,
-            qty: qty, 
-            group_id: GROUP_ID
+            category: category, name: name, brand: document.getElementById('f-brand').value,
+            model: document.getElementById('f-model').value, specs: specsStr,
+            total_price: total, unit_price: unitPrice, unit_label: specUnit,
+            channel: document.getElementById('f-channel').value, remark: document.getElementById('f-remark').value,
+            qty: qty, package_unit: packageUnit, group_id: GROUP_ID
         };
 
         if (currentEditId) {
@@ -413,22 +483,15 @@
         } else {
             await _supabase.from('records').insert([recordData]);
         }
-
-        closeModal();
-        fetchRecords(); 
+        closeModal(); fetchRecords(); 
     }
 
     async function deleteRecord() {
         if (!currentEditId) return;
         if (!confirm('确定要永久删除这条记录吗？\n删除后不可恢复！')) return;
-        
         const { error } = await _supabase.from('records').delete().eq('id', currentEditId);
-        if (error) {
-            alert('删除失败: ' + error.message);
-        } else {
-            closeModal();
-            fetchRecords();
-        }
+        if (error) alert('删除失败: ' + error.message);
+        else { closeModal(); fetchRecords(); }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
