@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>比价程序 - 云同步版 v6.0</title>
+    <title>比价程序 - 云同步版 v7.0</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
@@ -12,11 +12,27 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; height: 100vh; }
         
-        header { background: var(--nav); padding: 40px 20px 20px; color: white; flex-shrink: 0; }
+        header { background: var(--nav); padding: 40px 20px 15px; color: white; flex-shrink: 0; }
         .nav-title { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
         .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ccc; margin-right: 5px; }
         .status-dot.online { background: #4caf50; }
         .status-text { font-size: 12px; color: #aaa; }
+
+        /* 新增：分类筛选栏 */
+        .filter-bar { 
+            display: flex; gap: 10px; padding: 12px 15px; background: var(--white); 
+            border-bottom: 1px solid var(--border); overflow-x: auto; white-space: nowrap;
+            /* 隐藏滚动条但保留滑动功能 */
+            -ms-overflow-style: none; scrollbar-width: none; flex-shrink: 0;
+        }
+        .filter-bar::-webkit-scrollbar { display: none; }
+        .filter-tag {
+            padding: 6px 14px; border-radius: 20px; font-size: 13px; color: var(--sub);
+            border: 1px solid var(--border); cursor: pointer; transition: 0.2s; user-select: none;
+        }
+        .filter-tag.active {
+            background: var(--accent); color: white; border-color: var(--accent); font-weight: bold;
+        }
 
         main { flex: 1; overflow-y: auto; padding: 15px; }
         .group-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
@@ -71,6 +87,8 @@
         <span id="statusText" class="status-text">正在连接云端...</span>
     </div>
 </header>
+
+<div class="filter-bar" id="filterBar"></div>
 
 <main id="recordList"></main>
 
@@ -137,6 +155,7 @@
     let allRecords = []; 
     let currentEditId = null; 
     let collapsedGroups = {};
+    let currentCategoryFilter = '全部'; // 新增：当前激活的过滤标签
 
     async function fetchRecords() {
         try {
@@ -148,22 +167,58 @@
             document.getElementById('statusText').innerText = `已同步 (共 ${data.length} 条记录)`;
             
             updateNameList(); 
-
-            const groups = {};
-            data.forEach(item => {
-                if (!groups[item.name]) groups[item.name] = [];
-                groups[item.name].push(item);
-            });
-            renderUI(groups);
+            
+            // 每次拉取数据后，重绘顶部筛选栏，并应用筛选
+            renderFilterBar();
+            applyFilterAndRender();
         } catch (err) {
             document.getElementById('statusText').innerText = '连接失败';
         }
     }
 
+    // --- 【新功能】渲染顶部筛选横条 ---
+    function renderFilterBar() {
+        const filterEl = document.getElementById('filterBar');
+        // 提取所有不为空的大类，并去重
+        const categories = [...new Set(allRecords.map(r => r.category).filter(c => c))];
+        categories.unshift('全部'); // 把“全部”放在最前面
+
+        // 如果用户以前填的大类被删光了，重置为“全部”
+        if (!categories.includes(currentCategoryFilter)) currentCategoryFilter = '全部';
+
+        filterEl.innerHTML = categories.map(cat => `
+            <div class="filter-tag ${cat === currentCategoryFilter ? 'active' : ''}" 
+                 onclick="setFilter('${cat}')">${cat}</div>
+        `).join('');
+    }
+
+    // --- 【新功能】点击标签进行过滤 ---
+    function setFilter(catName) {
+        currentCategoryFilter = catName;
+        renderFilterBar(); // 更新标签高亮状态
+        applyFilterAndRender(); // 重新渲染下方列表
+    }
+
+    // --- 核心列表渲染（带过滤功能） ---
+    function applyFilterAndRender() {
+        // 根据当前选中的大类，过滤出要显示的数据
+        const filteredData = currentCategoryFilter === '全部' 
+            ? allRecords 
+            : allRecords.filter(r => r.category === currentCategoryFilter);
+
+        const groups = {};
+        filteredData.forEach(item => {
+            if (!groups[item.name]) groups[item.name] = [];
+            groups[item.name].push(item);
+        });
+        
+        renderUI(groups);
+    }
+
     function renderUI(groups) {
         const listEl = document.getElementById('recordList');
         if (Object.keys(groups).length === 0) {
-            listEl.innerHTML = '<div style="text-align:center; color:#999; margin-top:50px;">暂无比价记录</div>';
+            listEl.innerHTML = `<div style="text-align:center; color:#999; margin-top:50px;">当前分类 [${currentCategoryFilter}] 下暂无记录</div>`;
             return;
         }
 
@@ -173,8 +228,9 @@
             const avgPrice = (items.reduce((sum, i) => sum + i.unit_price, 0) / items.length).toFixed(2);
             const unit = items[0].unit_label || '件';
             
-            // 提取这个商品名称对应的大类（取第一条数据的分类）
-            const categoryTag = items[0].category ? `<span class="cat-tag">${items[0].category}</span>` : '';
+            // 如果处于“全部”标签下，显示大类小尾巴，否则隐藏（因为上面已经分类了）
+            const categoryTag = (items[0].category && currentCategoryFilter === '全部') 
+                                ? `<span class="cat-tag">${items[0].category}</span>` : '';
             
             const isCollapsed = collapsedGroups[name] ? 'collapsed' : '';
             const listHidden = collapsedGroups[name] ? 'hidden' : '';
@@ -199,15 +255,13 @@
                 const rowHighlight = item.is_starred ? 'is-starred' : '';
                 const remarkHtml = item.remark ? `<div class="remark-text">📝 ${item.remark}</div>` : '';
                 const modelStr = item.model ? `型号: ${item.model} | ` : '';
-                
-                // 修复 undefined：现在会直接显示存入的 qty，如果是以前没存 qty 的旧数据，显示 1
                 const displayQty = item.qty || 1;
 
                 html += `
                     <div class="item-row ${rowHighlight}">
                         <div class="item-main">
                             <div class="channel-name">
-                                <span class="star-icon ${starActive}" onclick="toggleStar(${item.id}, ${item.is_starred})">★</span>
+                                <span class="star-icon ${starActive}" onclick="toggleStar(${item.id}, ${item.is_starred}); event.stopPropagation();">★</span>
                                 ${item.channel || '未知渠道'}
                             </div>
                             <div class="sub-text">品牌: ${item.brand || '-'} | ${modelStr}规格: ${item.specs || '-'}</div>
@@ -227,7 +281,7 @@
         listEl.innerHTML = html;
     }
 
-    // --- 提取自动补全列表 ---
+    // --- 其他原有辅助功能保持不变 ---
     function updateNameList() {
         const names = [...new Set(allRecords.map(r => r.name).filter(n => n))];
         document.getElementById('name-list').innerHTML = names.map(n => `<option value="${n}">`).join('');
@@ -239,7 +293,6 @@
         document.getElementById('cat-list').innerHTML = categories.map(c => `<option value="${c}">`).join('');
     }
 
-    // --- 【重磅新功能】输入商品名称时，自动绑定大类、品牌、型号提示 ---
     function updateSuggestions() {
         const currentName = document.getElementById('f-name').value.trim();
         const brandList = document.getElementById('brand-list');
@@ -252,10 +305,7 @@
         const brands = new Set();
         const models = new Set();
         
-        // 查找是否已经有该商品的记录
         const matchRecord = allRecords.find(r => r.name === currentName && r.category);
-        
-        // 自动填入大类 (如果用户没有手动填的话)
         if (matchRecord && !document.getElementById('f-category').value) {
             document.getElementById('f-category').value = matchRecord.category;
         }
@@ -273,12 +323,7 @@
 
     function toggleGroup(name) {
         collapsedGroups[name] = !collapsedGroups[name];
-        const groups = {};
-        allRecords.forEach(item => {
-            if (!groups[item.name]) groups[item.name] = [];
-            groups[item.name].push(item);
-        });
-        renderUI(groups);
+        applyFilterAndRender(); // 折叠时也要带上当前的过滤状态
     }
 
     async function toggleStar(id, currentState) {
@@ -293,6 +338,12 @@
         document.getElementById('f-qty').value = '1';
         document.getElementById('f-specUnit').value = 'L';
         document.getElementById('btn-delete').style.display = 'none'; 
+        
+        // 如果当前在大类筛选下新增，自动把大类填进去，省去选择
+        if (currentCategoryFilter !== '全部') {
+            document.getElementById('f-category').value = currentCategoryFilter;
+        }
+
         updateSuggestions(); 
         document.getElementById('formModal').classList.add('active');
     }
@@ -303,7 +354,7 @@
         if(!item) return;
 
         document.getElementById('modalTitle').innerText = '修改记录';
-        document.getElementById('f-category').value = item.category || ''; // 读取大类
+        document.getElementById('f-category').value = item.category || ''; 
         document.getElementById('f-name').value = item.name;
         document.getElementById('f-brand').value = item.brand || '';
         document.getElementById('f-model').value = item.model || ''; 
@@ -318,7 +369,6 @@
             if (match) specNum = parseFloat(match[1]);
         }
         
-        // 读取真实的 qty，如果是旧数据就显示 1
         document.getElementById('f-qty').value = item.qty || 1;
         document.getElementById('f-specNum').value = specNum;
         document.getElementById('f-specUnit').value = specUnit;
@@ -332,7 +382,7 @@
 
     async function handleSave() {
         const name = document.getElementById('f-name').value;
-        const category = document.getElementById('f-category').value; // 获取大类
+        const category = document.getElementById('f-category').value; 
         const total = parseFloat(document.getElementById('f-totalPrice').value);
         const qty = parseInt(document.getElementById('f-qty').value) || 1;
         const specNum = parseFloat(document.getElementById('f-specNum').value) || 1;
@@ -344,7 +394,7 @@
         const specsStr = `${specNum}${specUnit}`;
 
         const recordData = {
-            category: category, // 存入大类
+            category: category, 
             name: name,
             brand: document.getElementById('f-brand').value,
             model: document.getElementById('f-model').value, 
@@ -354,7 +404,7 @@
             unit_label: specUnit,
             channel: document.getElementById('f-channel').value,
             remark: document.getElementById('f-remark').value,
-            qty: qty, // 存入真实的购买件数！解决 undefined 问题
+            qty: qty, 
             group_id: GROUP_ID
         };
 
