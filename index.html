@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>比价程序 - 云同步版 v2.9.7</title>
+    <title>比价程序 - 云同步版 v2.9.8</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pinyin-pro"></script>
@@ -40,7 +40,7 @@
 
         .group-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         
-        /* 一级标题：克制而清晰 */
+        /* 一级标题：保持原样 */
         .group-header { padding: 12px 14px; background: #faf4ed; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .group-title { font-weight: bold; font-size: 15px; display: flex; align-items: center; gap: 6px; color: var(--text); }
         .cat-tag { font-size: 10px; background: #e8e0d5; color: var(--accent); padding: 1px 4px; border-radius: 3px; font-weight: normal; }
@@ -52,34 +52,32 @@
         .item-list { transition: all 0.3s ease-in-out; }
         .item-list.hidden { display: none; }
         
-        /* 二级明细：极致压缩行间距 */
-        .item-row { padding: 10px 12px; border-bottom: 1px dashed #eee; display: flex; flex-direction: column; gap: 3px; }
+        /* 【关键修改区】二级明细：缩小框体(padding)，极限压缩行间距(gap) */
+        .item-row { padding: 7px 12px; border-bottom: 1px dashed #eee; display: flex; flex-direction: column; gap: 1px; }
         .item-row:last-child { border-bottom: none; }
         .item-row.is-starred { background: #fffcf2; } 
         
         .row-line { display: flex; justify-content: space-between; align-items: center; width: 100%; }
         
-        /* 二级标题：略逊于一级，星标置后 */
-        .channel-name { font-weight: 600; font-size: 14px; display: flex; align-items: center; color: #3A2D23; }
-        .star-icon { color: #E0D6CB; font-size: 15px; cursor: pointer; user-select: none; margin-left: 6px; transition: 0.2s; }
+        /* 字体齐降一号 */
+        .channel-name { font-weight: 600; font-size: 13px; display: flex; align-items: center; color: #3A2D23; }
+        .star-icon { color: #E0D6CB; font-size: 14px; cursor: pointer; user-select: none; margin-left: 5px; transition: 0.2s; }
         .star-icon.active { color: var(--star); }
         
-        .unit-price { font-size: 15px; font-weight: bold; color: var(--accent); flex-shrink: 0; }
+        .unit-price { font-size: 14px; font-weight: bold; color: var(--accent); flex-shrink: 0; }
         
-        /* 第二行左侧：品牌型号 */
         .details-container { flex: 1; min-width: 0; display: flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .sub-text { font-size: 12px; color: #6E5C4F; flex-shrink: 0; }
-        .remark-text { font-size: 10px; color: #a88a78; background: #fdfaf7; padding: 2px 4px; border-radius: 3px; display: inline-block; border: 1px solid #f0e6da; margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; }
+        .sub-text { font-size: 11px; color: #6E5C4F; flex-shrink: 0; }
+        .remark-text { font-size: 9px; color: #a88a78; background: #fdfaf7; padding: 1px 4px; border-radius: 3px; display: inline-block; border: 1px solid #f0e6da; margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; }
         
-        /* 第二行右侧：总价括号 + 编辑按钮 */
         .right-actions { display: flex; align-items: center; flex-shrink: 0; margin-left: 10px; gap: 6px; }
-        .total-info { font-size: 11px; color: #A09388; }
-        .edit-btn { color: #6E8572; font-size: 11px; padding: 3px 8px; background: transparent; border: 1px solid #C5D1C7; border-radius: 4px; cursor: pointer; }
+        .total-info { font-size: 10px; color: #A09388; }
+        .edit-btn { color: #6E8572; font-size: 10px; padding: 2px 7px; background: transparent; border: 1px solid #C5D1C7; border-radius: 4px; cursor: pointer; }
 
         footer { padding: 10px 15px 20px; background: var(--bg); border-top: 1px solid var(--border); flex-shrink: 0; }
         .add-btn { background: var(--accent); color: white; width: 100%; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; border: none; cursor: pointer;}
         
-        /* 弹窗样式 */
+        /* 弹窗样式不变 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
         .modal.active { display: flex; }
         .form-card { background: var(--white); width: 92%; max-width: 400px; padding: 20px; border-radius: 12px; max-height: 90vh; overflow-y: auto;}
@@ -201,8 +199,7 @@
             filteredData = filteredData.filter(r => 
                 (r.name && r.name.toLowerCase().includes(keyword)) || 
                 (r.brand && r.brand.toLowerCase().includes(keyword)) ||
-                (r.model && r.model.toLowerCase().includes(keyword)) ||
-                (r.channel && r.channel.toLowerCase().includes(keyword))
+                (r.model && r.model.toLowerCase().includes(keyword))
             );
         }
 
@@ -283,7 +280,6 @@
                     const modelStr = item.model ? `${item.model} | ` : '';
                     const remarkHtml = item.remark ? `<span class="remark-text">📝 ${item.remark}</span>` : '';
                     
-                    // 【终极重构版】双行布局，星标置后，总价靠右
                     html += `
                         <div class="item-row ${item.is_starred ? 'is-starred' : ''}">
                             <div class="row-line">
@@ -296,7 +292,7 @@
                                 </div>
                             </div>
                             
-                            <div class="row-line" style="margin-top: 2px;">
+                            <div class="row-line">
                                 <div class="details-container">
                                     <span class="sub-text">${brandStr}${modelStr}${item.specs || '-'}</span>
                                     ${remarkHtml}
