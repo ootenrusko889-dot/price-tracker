@@ -1,0 +1,15 @@
+{
+  "name": "云端比价程序",
+  "short_name": "比价",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F5EFE6",
+  "theme_color": "#241408",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2838/2838489.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
