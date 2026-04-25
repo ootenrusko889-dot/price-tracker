@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>比价程序 - 云同步版 v2.9.8</title>
     
+    <link rel="manifest" href="manifest.json">
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pinyin-pro"></script>
     
@@ -404,6 +406,16 @@
     document.addEventListener('DOMContentLoaded', () => {
         fetchRecords(); _supabase.channel('any').on('postgres_changes', { event: '*', table: 'records' }, fetchRecords).subscribe();
     });
+</script>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('PWA 魔法已启动！', reg))
+                .catch(err => console.log('启动失败', err));
+        });
+    }
 </script>
 </body>
 </html>
