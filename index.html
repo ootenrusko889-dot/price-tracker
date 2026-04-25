@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>比价程序 - 云同步版 v2.9.8</title>
+    <title>比价程序 - 云同步版 v2.9.9</title>
     
     <link rel="manifest" href="manifest.json">
     
@@ -42,7 +42,6 @@
 
         .group-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         
-        /* 一级标题：保持原样 */
         .group-header { padding: 12px 14px; background: #faf4ed; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .group-title { font-weight: bold; font-size: 15px; display: flex; align-items: center; gap: 6px; color: var(--text); }
         .cat-tag { font-size: 10px; background: #e8e0d5; color: var(--accent); padding: 1px 4px; border-radius: 3px; font-weight: normal; }
@@ -54,14 +53,12 @@
         .item-list { transition: all 0.3s ease-in-out; }
         .item-list.hidden { display: none; }
         
-        /* 【关键修改区】二级明细：缩小框体(padding)，极限压缩行间距(gap) */
         .item-row { padding: 7px 12px; border-bottom: 1px dashed #eee; display: flex; flex-direction: column; gap: 1px; }
         .item-row:last-child { border-bottom: none; }
         .item-row.is-starred { background: #fffcf2; } 
         
         .row-line { display: flex; justify-content: space-between; align-items: center; width: 100%; }
         
-        /* 字体齐降一号 */
         .channel-name { font-weight: 600; font-size: 13px; display: flex; align-items: center; color: #3A2D23; }
         .star-icon { color: #E0D6CB; font-size: 14px; cursor: pointer; user-select: none; margin-left: 5px; transition: 0.2s; }
         .star-icon.active { color: var(--star); }
@@ -79,7 +76,6 @@
         footer { padding: 10px 15px 20px; background: var(--bg); border-top: 1px solid var(--border); flex-shrink: 0; }
         .add-btn { background: var(--accent); color: white; width: 100%; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; border: none; cursor: pointer;}
         
-        /* 弹窗样式不变 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
         .modal.active { display: flex; }
         .form-card { background: var(--white); width: 92%; max-width: 400px; padding: 20px; border-radius: 12px; max-height: 90vh; overflow-y: auto;}
@@ -162,7 +158,9 @@
 
     let allRecords = []; 
     let currentEditId = null; 
-    let collapsedGroups = {};
+    
+    // 【核心修改】将原来的 collapsedGroups 逻辑反转为 expandedGroups
+    let expandedGroups = {};
     let currentCategoryFilter = '全部'; 
 
     async function fetchRecords() {
@@ -203,6 +201,11 @@
                 (r.brand && r.brand.toLowerCase().includes(keyword)) ||
                 (r.model && r.model.toLowerCase().includes(keyword))
             );
+            
+            // 如果用户在搜索，自动展开所有匹配到的组，方便查看！
+            const nameGroupsForSearch = {};
+            filteredData.forEach(item => nameGroupsForSearch[item.name] = true);
+            Object.keys(nameGroupsForSearch).forEach(name => expandedGroups[name] = true);
         }
 
         const nameGroups = {};
@@ -259,8 +262,10 @@
                 const avgPrice = (items.reduce((sum, i) => sum + i.unit_price, 0) / items.length).toFixed(2);
                 const unit = items[0].unit_label || '件';
                 const categoryTag = (items[0].category && currentCategoryFilter === '全部') ? `<span class="cat-tag">${items[0].category}</span>` : '';
-                const isCollapsed = collapsedGroups[name] ? 'collapsed' : '';
-                const listHidden = collapsedGroups[name] ? 'hidden' : '';
+                
+                // 【核心修改】判断逻辑反转：如果不包含在 expandedGroups 里，默认就是折叠隐藏的
+                const isCollapsed = expandedGroups[name] ? '' : 'collapsed';
+                const listHidden = expandedGroups[name] ? '' : 'hidden';
                 
                 const anchorId = isFirstGroupInLetter ? `id="letter-${letter}"` : '';
                 isFirstGroupInLetter = false;
@@ -347,7 +352,11 @@
         models.forEach(m => modelList.innerHTML += `<option value="${m}">`);
     }
 
-    function toggleGroup(name) { collapsedGroups[name] = !collapsedGroups[name]; applyFilterAndRender(); }
+    // 【核心修改】点击时切换状态
+    function toggleGroup(name) { 
+        expandedGroups[name] = !expandedGroups[name]; 
+        applyFilterAndRender(); 
+    }
 
     async function toggleStar(id, currentState) {
         await _supabase.from('records').update({ is_starred: !currentState }).eq('id', id);
@@ -395,6 +404,10 @@
         };
         if (currentEditId) await _supabase.from('records').update(recordData).eq('id', currentEditId);
         else await _supabase.from('records').insert([recordData]);
+        
+        // 自动展开刚保存的那个分类，让你能一眼看到
+        expandedGroups[name] = true; 
+        
         closeModal(); fetchRecords(); 
     }
 
